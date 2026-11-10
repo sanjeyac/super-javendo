@@ -1,0 +1,8 @@
+target/
+*.srm
+*.state
+# ROM di test di terzi (licenza non dichiarata): solo uso locale
+test_roms/**/*.sfc
+.idea/
+*.iml
+__pycache__/
