@@ -1,140 +1,142 @@
 <p align="center">
-  <img src="docs/splash.jpg" alt="Duke (Java) e Tux giocano a Street Fighter II su un Super Nintendo" width="720">
+  <img src="docs/splash.jpg" alt="Duke (Java) and Tux playing Street Fighter II on a Super Nintendo" width="720">
 </p>
 
 # SuperJavendo
 
-Un emulatore del **Super Nintendo (SNES)** scritto in **Java**, senza librerie esterne: solo JDK, Swing e `javax.sound`.
+A **Super Nintendo (SNES)** emulator written in **Java**, with no external libraries: just the JDK, Swing and `javax.sound`.
 
-## Perché
+## Why
 
-Questo progetto nasce per **ristudiare le architetture delle console del passato che hanno fatto la storia** e
-reimplementarle da zero. Scegliere Java per un lavoro del genere, un tempo, sarebbe stato poco sensato: la
-macchina virtuale, il garbage collector e le prestazioni non lasciavano margine per emulare in tempo reale un
-hardware con più processori, due chip video e audio dedicati. Oggi, tra JIT moderni, hardware veloce e buoni
-strumenti di sviluppo, è invece non solo possibile ma comodo: il codice resta leggibile, portabile e testabile.
+This project exists to **re-study the architectures of the console hardware that made history** and to
+reimplement them from scratch. Choosing Java for this kind of work would once have been a poor idea: the virtual
+machine, the garbage collector and the performance left no headroom for emulating, in real time, hardware with
+several processors, two video chips and a dedicated sound subsystem. Today, with modern JIT compilers, fast
+hardware and good development tools, it is not only possible but pleasant: the code stays readable, portable and testable.
 
-Il SNES è il primo bersaglio. L'idea è di arrivare, un'architettura alla volta, a un piccolo "museo" di console
-riprodotte con la stessa filosofia: capire come funzionava l'hardware, scrivere il modello più semplice che
-lo riproduce fedelmente, validarlo con test automatici e ROM di prova.
+The SNES is the first target. The goal is to grow, one architecture at a time, into a small "museum" of consoles
+rebuilt with the same philosophy: understand how the hardware worked, write the simplest model that reproduces it
+faithfully, and validate it with automated tests and test ROMs.
 
-## Stato attuale
+## Current status
 
-Gira **Street Fighter II (USA)** con grafica, parallasse a scorrimento e audio.
+Runs **Street Fighter II (USA)** with graphics, parallax scrolling and audio.
 
-| Componente | Stato |
+| Component | Status |
 |---|---|
-| CPU 65816 | completa, validata con i test per-istruzione di *SingleStepTests* |
-| Temporizzazione | scheduler a scanline (262 linee × 1364 clock master), VBlank, NMI e IRQ H/V, auto-lettura del joypad |
-| DMA / HDMA | diretto e indiretto; HDMA con le particolarità dei giochi reali |
-| PPU | modi 0–4 e 7, sprite, finestre, mosaico, color math (schermo principale e secondario) |
-| Audio | SPC700 con IPL ROM reale, DSP (BRR, ADSR/GAIN, rumore, eco, interpolazione), uscita a 48 kHz |
-| Cartucce | LoROM e HiROM, SRAM con batteria su file `.srm` |
-| Input | tastiera e gamepad Linux (`/dev/input/js*`), profili configurabili, più giocatori sulle porte 1 e 2 |
-| Save state | 4 slot da tastiera + slot rapido da gamepad, con screenshot incorporato |
-| Frontend | lista giochi con scansione cartelle, anteprima, reset, configuratore grafico dei controller |
+| 65816 CPU | complete, validated against the *SingleStepTests* per-instruction suite |
+| Timing | scanline scheduler (262 lines × 1364 master clocks), VBlank, H/V NMI and IRQ, joypad auto-read |
+| DMA / HDMA | direct and indirect; HDMA including the quirks real games rely on |
+| PPU | modes 0–4 and 7, sprites, windows, mosaic, colour math (main and sub screen) |
+| Audio | SPC700 with the real IPL ROM, DSP (BRR, ADSR/GAIN, noise, echo, interpolation), 48 kHz output |
+| Cartridges | LoROM and HiROM, battery SRAM saved to a `.srm` file |
+| Input | keyboard and Linux gamepads (`/dev/input/js*`), configurable profiles, players on ports 1 and 2 |
+| Save states | 4 slots from the keyboard + a quick slot from the gamepad, with an embedded screenshot |
+| Frontend | game list with folder scanning, preview, reset, graphical controller configurator |
 
-### Cosa manca
+### Missing
 
-- **Chip speciali** (SuperFX, SA-1, DSP-n, Cx4, S-DD1, …): elenco e ordine consigliato in [`docs/special-chip-games.md`](docs/special-chip-games.md).
-- Modi video ad alta risoluzione (5/6) e interlacciato.
-- Multitap (oltre 2 giocatori) e periferiche particolari (mouse, Super Scope).
-- Il livello di precisione è "a scanline" (stile snes9x), non a ciclo (stile bsnes): i giochi più esigenti sul timing possono divergere.
+- **Special chips** (SuperFX, SA-1, DSP-n, Cx4, S-DD1, …): list and suggested order in [`docs/special-chip-games.md`](docs/special-chip-games.md).
+- High-resolution video modes (5/6) and interlacing.
+- Multitap (more than 2 players) and special peripherals (mouse, Super Scope).
+- Accuracy is scanline-level (snes9x style), not cycle-level (bsnes style): games that are very sensitive to timing may diverge.
 
-## Requisiti
+## Requirements
 
-- JDK 21 o superiore (sviluppato con JDK 27)
+- JDK 21 or newer (developed with JDK 27)
 - Maven 3.9+
-- Linux (il supporto gamepad usa l'API joystick del kernel; il resto è Java puro)
+- Linux (gamepad support uses the kernel joystick API; everything else is plain Java)
 
-Serve una **ROM di tua proprietà**: nessuna ROM commerciale è inclusa né verrà mai inclusa.
+You need a **ROM you own**: no commercial ROMs are included, and none ever will be.
 
-## Compilare ed eseguire
+## Build and run
 
 ```sh
-mvn package                 # compila ed esegue i test → target/superjavendo.jar
+mvn package                 # builds and runs the tests → target/superjavendo.jar
 
-java -jar target/superjavendo.jar                       # apre la lista giochi
-java -jar target/superjavendo.jar gioco.sfc             # avvia direttamente una ROM
-java -jar target/superjavendo.jar gioco.sfc -p1 easysmx -p2 keyboard2   # profili controller per giocatore
-java -jar target/superjavendo.jar --controllers         # solo il configuratore dei controller
+java -jar target/superjavendo.jar                       # opens the game list
+java -jar target/superjavendo.jar game.sfc              # starts a ROM directly
+java -jar target/superjavendo.jar game.sfc -p1 easysmx -p2 keyboard2   # controller profile per player
+java -jar target/superjavendo.jar --controllers         # controller configurator only
 ```
 
-### Comandi nel gioco
+### In-game controls
 
-| Tasto | Azione |
+| Key | Action |
 |---|---|
-| frecce, Z, X, A, S, Q, W, Invio, Shift | D-pad, B, A, Y, X, L, R, Start, Select (profilo `keyboard`, modificabile) |
-| `1`…`4` / Shift+`1`…`4` | salva / carica lo slot 1…4 |
-| F5 / F9, oppure i tasti `save_state`/`load_state` del pad | salva / carica lo slot rapido (0) |
-| `P` | pausa |
-| `Esc` | esci |
+| arrows, Z, X, A, S, Q, W, Enter, Shift | D-pad, B, A, Y, X, L, R, Start, Select (`keyboard` profile, editable) |
+| `1`…`4` / Shift+`1`…`4` | save / load slot 1…4 |
+| F5 / F9, or the pad's `save_state`/`load_state` buttons | save / load the quick slot (0) |
+| `P` | pause |
+| `Esc` | quit |
 
 ## Frontend
 
-- **Lista giochi**: «Scansiona cartella…» cerca ROM in modo ricorsivo e le registra in `~/.config/superjavendo/game.list`.
-  Selezionando un gioco appare lo screenshot dell'ultimo salvataggio oppure la copertina
-  (`~/.config/superjavendo/game-covers/<nome rom>.png`; le copertine hanno copyright e non sono nel repository).
-- **START / RESET** avviano e riavviano il gioco, che gira in una finestra separata.
-- **Configuratore controller**: immagine di un pad SNES, si clicca un pulsante, si vedono i tasti associati e si
-  aggiunge o rimuove un'assegnazione premendo il tasto (o il pulsante del joystick).
+- **Game list**: "Scansiona cartella…" (scan folder) searches recursively for ROMs and records them in `~/.config/superjavendo/game.list`.
+  Selecting a game shows the screenshot of its last save, or its cover art
+  (`~/.config/superjavendo/game-covers/<rom name>.png`; covers are copyrighted and are not in the repository).
+- **START / RESET** launch and reset the game, which runs in a separate window.
+- **Controller configurator**: an image of an SNES pad; click a button to see its bound inputs and add or
+  remove a binding by pressing the key (or the joystick button).
 
-## Configurazione
+The frontend UI is currently in Italian.
 
-Tutto sta in `~/.config/superjavendo/` (o `$XDG_CONFIG_HOME/superjavendo/`):
+## Configuration
+
+Everything lives in `~/.config/superjavendo/` (or `$XDG_CONFIG_HOME/superjavendo/`):
 
 ```
-controllers.cfg          # quali profili usa ogni giocatore: player1=keyboard,easysmx@0
-joystick/<nome>.cfg      # un profilo per dispositivo (creati al primo avvio: keyboard, keyboard2, easysmx, xbox)
-states/<rom>.state       # slot 0;  <rom>.N.state per gli slot 1…4
-game.list                # giochi trovati dalla scansione
-game-covers/             # copertine opzionali
+controllers.cfg          # which profiles each player uses: player1=keyboard,easysmx@0
+joystick/<name>.cfg      # one profile per device (created on first run: keyboard, keyboard2, easysmx, xbox)
+states/<rom>.state       # slot 0;  <rom>.N.state for slots 1…4
+game.list                # games found by the scan
+game-covers/             # optional cover art
 ```
 
-Un profilo è un file di testo, un pulsante per riga:
+A profile is a plain text file, one button per line:
 
 ```
 type=gamepad
 name=EasySMX
-up=AXIS_7-,AXIS_1-       # più input sullo stesso pulsante, separati da virgola
+up=AXIS_7-,AXIS_1-       # several inputs on the same button, comma separated
 b=BUTTON_0
-l=BUTTON_6,BUTTON_8      # L1 e L2 insieme
+l=BUTTON_6,BUTTON_8      # L1 and L2 together
 save_state=BUTTON_13
 ```
 
-Tastiera: nomi Linux (`KEY_UP`, `KEY_Z`, …). Joystick: `BUTTON_n`, `AXIS_n+`, `AXIS_n-` (numeri di `jstest /dev/input/js0`).
+Keyboard: Linux key names (`KEY_UP`, `KEY_Z`, …). Joystick: `BUTTON_n`, `AXIS_n+`, `AXIS_n-` (numbers from `jstest /dev/input/js0`).
 
-## Architettura
+## Architecture
 
-Il codice è in `src/main/java/dev/superjavendo/`, un package per componente hardware:
+The code lives in `src/main/java/dev/superjavendo/`, one package per hardware component:
 
 ```
-cpu/        CPU 65816
-bus/        bus indirizzi, mappa memoria, registri I/O
+cpu/        65816 CPU
+bus/        address bus, memory map, I/O registers
 cart/       header, LoROM/HiROM, SRAM
-timing/     costanti di temporizzazione
-dma/        DMA e HDMA
-ppu/        PPU: renderer a scanline
-apu/        SPC700, DSP e porte di comunicazione
-input/      joypad, strategie di controller (tastiera, gamepad), profili
-state/      serializzazione dei save state
-config/     percorsi dell'applicazione
-ui/         finestra di emulazione e uscita audio
-frontend/   lista giochi e configuratore controller
-Snes.java   collega i componenti ed esegue lo scheduler
+timing/     timing constants
+dma/        DMA and HDMA
+ppu/        PPU: scanline renderer
+apu/        SPC700, DSP and communication ports
+input/      joypad, controller strategies (keyboard, gamepad), profiles
+state/      save-state serialisation
+config/     application paths
+ui/         emulation window and audio output
+frontend/   game list and controller configurator
+Snes.java   wires the components together and runs the scheduler
 ```
 
-Scelte di progetto: i controller sono *strategy* intercambiabili (`ControllerInput`), i profili sono dati, lo stato
-dei componenti è serializzabile (`Stateful`) così il save state è deterministico.
+Design choices: controllers are interchangeable *strategies* (`ControllerInput`), profiles are plain data, and
+component state is serialisable (`Stateful`) so save states are deterministic.
 
-## Test e confronto con altri emulatori
+## Testing and comparison with other emulators
 
-- `mvn test`: test unitari su CPU, PPU, APU, scheduler, save state, input e frontend.
-- [`test_roms/`](test_roms/README.md): ROM homebrew di test (PeterLemon/SNES) per verifiche deterministiche, uso locale.
-- [`diff.md`](diff.md): procedura per confrontare frame per frame SuperJavendo con snes9x (core libretro)
-  usando gli stessi input; strumenti in `tools/diff/`.
+- `mvn test`: unit tests for CPU, PPU, APU, scheduler, save states, input and frontend.
+- [`test_roms/`](test_roms/README.md): third-party homebrew test ROMs (PeterLemon/SNES) for deterministic checks, local use only (not tracked in git).
+- [`diff.md`](diff.md): procedure to compare SuperJavendo frame by frame with snes9x (libretro core)
+  using identical inputs; tools are in `tools/diff/`.
 
-## Note legali
+## Legal
 
-SuperJavendo è un progetto educativo. Non contiene né distribuisce ROM, BIOS o copertine protette da copyright.
-*Super Nintendo* e *SNES* sono marchi di Nintendo; questo progetto non è affiliato né approvato da Nintendo.
+SuperJavendo is an educational project. It does not contain or distribute ROMs, BIOS images or copyrighted cover art.
+*Super Nintendo* and *SNES* are trademarks of Nintendo; this project is not affiliated with or endorsed by Nintendo.
