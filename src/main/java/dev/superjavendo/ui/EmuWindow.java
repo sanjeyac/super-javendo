@@ -23,6 +23,34 @@ public final class EmuWindow extends JFrame {
 
     private volatile Snes snes;
     private volatile boolean resetRequest;
+
+    /** How the 256x224 frame is scaled to the window; F cycles through them. */
+    private enum Filter {
+        NEAREST("Pixel esatti (nearest)"), SHARP("Bilineare nitido (default)"), SMOOTH("Bilineare morbido");
+        final String label;
+        Filter(String l) { label = l; }
+    }
+    private volatile Filter filter = Filter.SHARP;
+    private BufferedImage prescaleBuf;
+    private int prescaleK;
+
+    /**
+     * "Sharp bilinear": enlarge by the smallest whole factor that covers the target width with nearest-neighbour
+     * (keeps pixel edges crisp), so the final bilinear step only has to smooth a fractional remainder.
+     */
+    private BufferedImage prescaled(int targetWidth) {
+        int k = Math.max(1, (int) Math.ceil(targetWidth / (double) Ppu.WIDTH));
+        if (k == 1) return image;
+        if (prescaleBuf == null || prescaleK != k) {
+            prescaleBuf = new BufferedImage(Ppu.WIDTH * k, Ppu.HEIGHT * k, BufferedImage.TYPE_INT_RGB);
+            prescaleK = k;
+        }
+        Graphics2D pg = prescaleBuf.createGraphics();
+        pg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+        pg.drawImage(image, 0, 0, prescaleBuf.getWidth(), prescaleBuf.getHeight(), null);
+        pg.dispose();
+        return prescaleBuf;
+    }
     private final Path sramFile;
     private final java.util.function.IntFunction<Path> stateFiles;
     private int prevActions;
@@ -47,13 +75,18 @@ public final class EmuWindow extends JFrame {
         JPanel panel = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
-                ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                        RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+                Graphics2D g2 = (Graphics2D) g;
                 int w = getWidth(), h = getHeight();
                 double aspect = 256.0 / 224.0;
                 int dw = w, dh = (int) (w / aspect);
                 if (dh > h) { dh = h; dw = (int) (h * aspect); }
-                g.drawImage(image, (w - dw) / 2, (h - dh) / 2, dw, dh, null);
+                BufferedImage src = image;
+                Object hint = RenderingHints.VALUE_INTERPOLATION_BILINEAR;
+                if (filter == Filter.NEAREST) hint = RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR;
+                else if (filter == Filter.SHARP) src = prescaled(dw);
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, hint);
+                g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+                g.drawImage(src, (w - dw) / 2, (h - dh) / 2, dw, dh, null);
                 if (System.currentTimeMillis() < toastUntil) {
                     g.setFont(g.getFont().deriveFont(Font.BOLD, 16f));
                     FontMetrics fm = g.getFontMetrics();
@@ -77,7 +110,10 @@ public final class EmuWindow extends JFrame {
                 int slot = e.getKeyCode() - KeyEvent.VK_0;
                 if (slot >= 1 && slot <= AppPaths.MAX_SLOT) { stateRequest = (slot << 2) | (e.isShiftDown() ? 2 : 1); return; }
                 if (ports.onKey(e.getKeyCode(), true)) return;
-                if (e.getKeyCode() == KeyEvent.VK_P) paused = !paused;
+                if (e.getKeyCode() == KeyEvent.VK_F) {
+                    filter = Filter.values()[(filter.ordinal() + 1) % Filter.values().length];
+                    show("Filtro: " + filter.label);
+                } else if (e.getKeyCode() == KeyEvent.VK_P) paused = !paused;
                 else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) dispose();
             }
             @Override public void keyReleased(KeyEvent e) {
