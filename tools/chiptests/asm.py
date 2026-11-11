@@ -104,6 +104,14 @@ class Asm:
     def jsr(self, name): self._abs_label(0x20, name)
     def rts(self): self.emit(0x60)
     def tya(self): self.emit(0x98)
+    def tay(self): self.emit(0xA8)
+    def phx(self): self.emit(0xDA)
+    def plx(self): self.emit(0xFA)
+    def phy(self): self.emit(0x5A)
+    def ply(self): self.emit(0x7A)
+    def phk(self): self.emit(0x4B)
+    def plb(self): self.emit(0xAB)
+    def mvn(self, dst, src): self.emit(0x54, dst, src)    # block move X -> Y, A+1 bytes, banks src -> dst
     def cmp_dp(self, d): self.emit(0xC5, d)
 
     # -- control flow -----------------------------------------------------

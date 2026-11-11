@@ -85,6 +85,16 @@ def main():
             keep.append(b)
             C.cast(data, C.POINTER(C.c_char_p)).contents.value = b
             return True
+        if cmd == 15:  # RETRO_ENVIRONMENT_GET_VARIABLE: bsnes must use its HLE coprocessors (no firmware needed)
+            class Var(C.Structure):
+                _fields_ = [('key', C.c_char_p), ('value', C.c_char_p)]
+            v = C.cast(data, C.POINTER(Var)).contents
+            if v.key == b'bsnes_coprocessor_prefer_hle':
+                on = C.create_string_buffer(b'ON')
+                keep.append(on)
+                C.cast(data, C.POINTER(C.c_void_p))[1] = C.addressof(on)
+                return True
+            return False
         return False
 
     def video(data, w, h, pitch):

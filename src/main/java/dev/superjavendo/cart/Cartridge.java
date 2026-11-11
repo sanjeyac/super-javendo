@@ -40,7 +40,7 @@ public final class Cartridge {
         this.chip = Chip.fromRomType(data[h + 0x16] & 0xFF);
         int expansionRam = data[h - 3] & 0xFF;                 // extended header: expansion RAM size, 1 KB << n
         int chipRam = expansionRam >= 1 && expansionRam <= 7 ? 1024 << expansionRam : sramBytes > 0 ? sramBytes : 0x8000;
-        this.coprocessor = chip == Chip.SUPERFX ? new SuperFx(data, chipRam) : chip == Chip.DSP ? new Dsp1(mapping == Mapping.HIROM) : chip == Chip.OBC1 ? new Obc1() : null;
+        this.coprocessor = chip == Chip.SUPERFX ? new SuperFx(data, chipRam) : chip == Chip.DSP ? new Dsp1(mapping == Mapping.HIROM) : chip == Chip.OBC1 ? new Obc1() : chip == Chip.CX4 ? new Cx4(a -> read(a >> 16, a & 0xFFFF)) : null;
     }
 
     public static Cartridge load(Path path) throws IOException {

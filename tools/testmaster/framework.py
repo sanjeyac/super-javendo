@@ -80,7 +80,7 @@ class Group:
 # ---------------------------------------------------------------------------------------------------------------
 
 def build(title, rom_type, groups, expected, path, sram_kb_code=0, map_mode=0x20, header_text='TEST MASTER', rom_kb=128,
-          cart_title=None):
+          cart_title=None, fixed_blob=b''):
     n = len(groups)
     assert n <= 24, 'the report screen holds 24 groups'
     a = Asm()
@@ -214,6 +214,9 @@ def build(title, rom_type, groups, expected, path, sram_kb_code=0, map_mode=0x20
     assert len(code) < 0x7FC0, f'bank 0 overflow: {len(code)}'
     # -- data tables in the following banks (never straddling a bank boundary) ----------------------------------------
     rom = bytearray(code.ljust(0x8000, b'\xFF'))
+    if fixed_blob:                                  # data the chip under test reads from the cartridge: $01:8000
+        assert len(fixed_blob) <= 0x8000
+        rom += fixed_blob.ljust(0x8000, b'\xFF')
     for i, g in enumerate(groups):
         if len(rom) % 0x8000 + len(g.table) > 0x8000:
             rom += b'\xFF' * (0x8000 - len(rom) % 0x8000)
@@ -229,6 +232,14 @@ def build(title, rom_type, groups, expected, path, sram_kb_code=0, map_mode=0x20
     size_kb = 1 << (size_kb - 1).bit_length()
     full = build_rom(bytes(rom), cart_title or title, rom_type, sram_kb_code=sram_kb_code, size_kb=size_kb,
                      path=None, map_mode=map_mode)
+    if rom_type == 0xF3:                         # Cx4: expansion byte $FFBF = $10 (bsnes' board detection), fix the checksum
+        full = bytearray(full)
+        full[0x7FBF] = 0x10
+        full[0x7FDC:0x7FE0] = b'\0\0\0\0'
+        total = sum(full) & 0xFFFF
+        full[0x7FDC:0x7FDE] = ((total ^ 0xFFFF)).to_bytes(2, 'little')
+        full[0x7FDE:0x7FE0] = total.to_bytes(2, 'little')
+        full = bytes(full)
     if path:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         open(path, 'wb').write(full)

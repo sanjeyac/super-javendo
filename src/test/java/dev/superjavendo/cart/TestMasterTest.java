@@ -9,9 +9,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** Runs the self-checking test master cartridge ({@code tools/testmaster}); see its result table layout in framework.py. */
 class TestMasterTest {
-    @Test void dsp1MasterPassesEveryGroup() throws Exception {
+    @Test void dsp1MasterPassesEveryGroup() throws Exception { runMaster("dsp1"); }
+
+    @Test void cx4MasterPassesEveryGroup() throws Exception { runMaster("cx4"); }
+
+    private void runMaster(String chip) throws Exception {
         byte[] rom;
-        try (InputStream in = getClass().getResourceAsStream("/testmaster/test_master_dsp1.sfc")) { rom = in.readAllBytes(); }
+        try (InputStream in = getClass().getResourceAsStream("/testmaster/test_master_" + chip + ".sfc")) { rom = in.readAllBytes(); }
         Snes snes = new Snes(new Cartridge(rom));
         for (int f = 0; f < 1500 && snes.bus.read(0x7E200A) != 0xA5; f++) snes.runFrame();
         assertEquals(0xA5, snes.bus.read(0x7E200A), "the run did not finish");

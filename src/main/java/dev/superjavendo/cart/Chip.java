@@ -8,7 +8,7 @@ public enum Chip {
     public final String label;
     Chip(String label) { this.label = label; }
 
-    public boolean supported() { return this == NONE || this == SUPERFX || this == DSP || this == OBC1; }
+    public boolean supported() { return this == NONE || this == SUPERFX || this == DSP || this == OBC1 || this == CX4; }
 
     /** Decodes the header "ROM type" byte ($FFD6 / $7FD6). */
     public static Chip fromRomType(int type) {

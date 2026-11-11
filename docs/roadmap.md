@@ -48,7 +48,7 @@ Ordine consigliato (vedi anche [docs/special-chip-games.md](special-chip-games.m
 |---|------|-----|---------------|------|
 | 4.1 | DSP-1 (HLE) | P1 | Super Mario Kart, Pilotwings | molti racing |
 | 4.2 | S-DD1, OBC1 | P2 | SF Alpha 2, Metal Combat | decompressore / OAM |
-| 4.3 | Cx4 | P2 | Mega Man X2/X3 | HLE |
+| 4.3 | Cx4 | P2 | Mega Man X2/X3 | HLE — fatto (da provare in gioco) |
 | 4.4 | SuperFX (GSU-1/2) | ✅ (parziale) | Star Fox, Yoshi's Island, Stunt Race FX… | Implementato; 58 ROM di test e Yoshi identici a snes9x. Aperti: Doom (texture corrotte), timing preciso, arbitraggio ROM/RAM |
 | 4.5 | SA-1 | P2 | Super Mario RPG, Kirby Super Star | secondo 65816 |
 | 4.6 | SPC7110, ST010/011/018, S-RTC | P3 | titoli giapponesi | |
