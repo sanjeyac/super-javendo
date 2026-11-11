@@ -29,6 +29,9 @@ public final class Main {
             Map.entry("start", Joypad.START), Map.entry("select", Joypad.SELECT));
 
     public static void main(String[] args) throws Exception {
+        // Smooth text in every Swing component (labels, text fields, menus), not only in our custom-painted ones.
+        System.setProperty("awt.useSystemAAFontSettings", "on");
+        System.setProperty("swing.aatext", "true");
         String lang = System.getProperty("sj.lang");
         dev.superjavendo.i18n.I18n.set(lang != null ? lang : dev.superjavendo.config.Settings.load(dev.superjavendo.config.AppPaths.forCurrentUser()).language);
         if (args.length == 3 && args[0].equals("--state-shot")) { // --state-shot <file.state> <out.png>
