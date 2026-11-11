@@ -122,7 +122,8 @@ input/      joypad, controller strategies (keyboard, gamepad), profiles
 state/      save-state serialisation
 config/     application paths
 ui/         emulation window and audio output
-frontend/   game list and controller configurator
+frontend/legacy/   original game list and controller configurator (--ui-legacy)
+frontend/modern/   current frontend: library, ROM Manager, controller editor, settings
 Snes.java   wires the components together and runs the scheduler
 ```
 

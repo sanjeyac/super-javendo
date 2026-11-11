@@ -43,7 +43,7 @@ public final class Main {
         }
         if (args.length == 1 && args[0].equals("--controllers")) {   // open only the controller configurator
             SwingUtilities.invokeLater(() -> {
-                var w = new dev.superjavendo.frontend.ControllerConfigWindow();
+                var w = new dev.superjavendo.frontend.legacy.ControllerConfigWindow();
                 w.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 w.setVisible(true);
             });
@@ -53,7 +53,7 @@ public final class Main {
             System.setProperty("java.awt.headless", "true");
             int w = args.length > 3 ? Integer.parseInt(args[2]) : 1440, h = args.length > 3 ? Integer.parseInt(args[3]) : 900;
             String tab = args.length > 4 ? args[4] : "library";
-            var shell = new dev.superjavendo.frontend2.Shell(dev.superjavendo.config.AppPaths.forCurrentUser(), new java.util.HashMap<>());
+            var shell = new dev.superjavendo.frontend.modern.Shell(dev.superjavendo.config.AppPaths.forCurrentUser(), new java.util.HashMap<>());
             javax.imageio.ImageIO.write(shell.render(w, h, tab, args.length > 5 && args[5].equals("list"), args.length > 6 ? args[6] : ""), "png", new java.io.File(args[1]));
             System.exit(0);
         }
@@ -90,11 +90,11 @@ public final class Main {
             }
         }
         if (rom == null && headlessFrames < 0 && !legacy) {
-            SwingUtilities.invokeLater(() -> new dev.superjavendo.frontend2.Shell(dev.superjavendo.config.AppPaths.forCurrentUser(), profiles).window().setVisible(true));
+            SwingUtilities.invokeLater(() -> new dev.superjavendo.frontend.modern.Shell(dev.superjavendo.config.AppPaths.forCurrentUser(), profiles).window().setVisible(true));
             return;
         }
         if (rom == null && headlessFrames < 0) {
-            SwingUtilities.invokeLater(() -> new dev.superjavendo.frontend.LauncherWindow(profiles).setVisible(true));
+            SwingUtilities.invokeLater(() -> new dev.superjavendo.frontend.legacy.LauncherWindow(profiles).setVisible(true));
             return;
         }
         if (headlessFrames < 0) {
@@ -104,7 +104,7 @@ public final class Main {
                 System.err.println(e.getMessage());
                 System.exit(2);
             }
-            dev.superjavendo.frontend.GameLauncher.open(rom, profiles, true);
+            dev.superjavendo.frontend.legacy.GameLauncher.open(rom, profiles, true);
             return;
         }
         Cartridge cart = Cartridge.load(rom);

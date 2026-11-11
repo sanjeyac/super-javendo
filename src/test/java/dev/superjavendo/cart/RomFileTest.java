@@ -1,6 +1,6 @@
 package dev.superjavendo.cart;
 
-import dev.superjavendo.frontend.GameList;
+import dev.superjavendo.frontend.legacy.GameList;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

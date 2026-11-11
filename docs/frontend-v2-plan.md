@@ -1,7 +1,7 @@
 # Frontend v2 — piano di realizzazione
 
-Specifica e mockup: `docs/ui-design/`. La v2 sta in un package separato (`dev.superjavendo.frontend2`) e **non tocca la v1**
-(`frontend/`): si avvia di default; `--ui-legacy` apre la v1. Riuso dalla v1 solo codice non grafico
+Specifica e mockup: `docs/ui-design/`. La v2 sta in un package separato (`dev.superjavendo.frontend.modern`) e **non tocca la v1**
+(`frontend/legacy/`): si avvia di default; `--ui-legacy` apre la v1. Riuso dalla v1 solo codice non grafico
 (`GameList`, `Previews`, `GameLauncher`, `AppPaths`, `ProfileStore`…).
 
 ## Decisioni
@@ -34,4 +34,4 @@ avanti veloce / screenshot / menu di pausa non esistono ancora in `EmuWindow`; r
 Segnaposto `{0}`, `{1}`. La lingua sta in `settings.cfg` (`language=`, vuoto = lingua di sistema); cambiandola dalle Impostazioni la finestra si ricostruisce subito
 (un gioco in esecuzione continua ma esce dall'indicatore). Per provare una lingua senza toccare la config: `java -Dsj.lang=de -jar … --ui2-shot …`.
 Per aggiungere una lingua: nuovo file `messages_xx.properties` con **le stesse chiavi** (lo verifica `I18nTest`) e una riga in `I18n.LANGUAGES`.
-Le stringhe di `EmuWindow` (toast in gioco) sono tradotte; la v1 (`frontend/`) e i messaggi di errore del core restano come sono.
+Le stringhe di `EmuWindow` (toast in gioco) sono tradotte; la v1 (`frontend/legacy/`) e i messaggi di errore del core restano come sono.

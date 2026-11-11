@@ -8,10 +8,10 @@ Analisi di sola lettura del codice (percorso base: `src/main/java/dev/superjaven
 
 | Classe | Ruolo |
 |---|---|
-| `frontend/LauncherWindow` (JFrame) | Libreria: titolo, `CoverGrid` in uno `JScrollPane`, bottoni START, RESET, Scansiona e Controller, riga di stato. |
-| `frontend/CoverGrid` (JComponent + `Scrollable`) | Griglia di copertine con paint custom. |
-| `frontend/ControllerConfigWindow` (JFrame) + `PadView` | Editor dei profili: disegno del pad, lista dei binding, cattura del prossimo input. |
-| `frontend/GameList`, `GameEntry`, `Previews`, `GameLauncher`, `Theme` | Catalogo, record del gioco, copertine/anteprime, avvio ROM, palette. |
+| `frontend/legacy/LauncherWindow` (JFrame) | Libreria: titolo, `CoverGrid` in uno `JScrollPane`, bottoni START, RESET, Scansiona e Controller, riga di stato. |
+| `frontend/legacy/CoverGrid` (JComponent + `Scrollable`) | Griglia di copertine con paint custom. |
+| `frontend/legacy/ControllerConfigWindow` (JFrame) + `PadView` | Editor dei profili: disegno del pad, lista dei binding, cattura del prossimo input. |
+| `frontend/legacy/GameList`, `GameEntry`, `Previews`, `GameLauncher`, `Theme` | Catalogo, record del gioco, copertine/anteprime, avvio ROM, palette. |
 | `ui/EmuWindow` (JFrame) | Finestra di gioco con il loop di emulazione. |
 | `ui/AudioOut` | Uscita audio. |
 
@@ -241,7 +241,7 @@ player2=keyboard2,xbox@1
 /home/USER/Emu/snes/roms/A Bug's Life.zip	A Bug's Life
 ```
 
-**Campi della classe del gioco** (`frontend/GameEntry`):
+**Campi della classe del gioco** (`frontend/legacy/GameEntry`):
 ```java
 public record GameEntry(Path path, String title)   // nessun altro campo
 ```
