@@ -35,6 +35,12 @@ public final class AppPaths {
     /** Games found by the frontend scanner: one {@code path<TAB>title} per line. */
     public Path gameListFile() { return configDir.resolve("game.list"); }
 
+    /** Per-game user data of the v2 frontend (favourites, last played, play time). */
+    public Path userDataFile() { return configDir.resolve("library-user.tsv"); }
+
+    /** Optional game metadata (TSV keyed by CRC32). */
+    public Path metadataFile() { return configDir.resolve("games.tsv"); }
+
     /** Cover images: {@code game-covers/<rom name>.png|jpg}. */
     public Path coversDir() { return configDir.resolve("game-covers"); }
 

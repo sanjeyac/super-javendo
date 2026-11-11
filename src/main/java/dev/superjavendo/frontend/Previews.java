@@ -66,7 +66,7 @@ public final class Previews {
      * Finds the cover for a ROM name (no extension): identical file name first, else the single cover whose
      * normalized title equals the ROM's. Ambiguous or missing → null (deterministic: never picks by file order).
      */
-    static Path findCover(String romName, Path coversDir) {
+    public static Path findCover(String romName, Path coversDir) {
         for (String ext : COVER_EXTS) {
             Path c = coversDir.resolve(romName + "." + ext);
             if (Files.isRegularFile(c)) return c;
@@ -98,7 +98,7 @@ public final class Previews {
      * Title key shared by GoodSNES ("Addams Family, The (U) [!]") and No-Intro ("The Addams Family (USA)") names:
      * drops (..) and [..] tags, moves a trailing ", The/A/An" to the front, "_" → "'", "&" → "and", keeps [a-z0-9].
      */
-    static String normalizeTitle(String name) {
+    public static String normalizeTitle(String name) {
         String s = name.replaceAll("\\([^)]*\\)|\\[[^\\]]*\\]", "").trim();
         s = s.replace('_', '\'');
         java.util.regex.Matcher m = java.util.regex.Pattern.compile("^(.*?),\\s*(The|A|An)\\b(.*)$").matcher(s);

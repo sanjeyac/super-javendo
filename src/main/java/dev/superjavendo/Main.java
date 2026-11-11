@@ -44,18 +44,28 @@ public final class Main {
             });
             return;
         }
+        if (args.length >= 2 && args[0].equals("--ui2-shot")) {     // --ui2-shot out.png [W H] [library|rom|controller|settings]
+            System.setProperty("java.awt.headless", "true");
+            int w = args.length > 3 ? Integer.parseInt(args[2]) : 1440, h = args.length > 3 ? Integer.parseInt(args[3]) : 900;
+            String tab = args.length > 4 ? args[4] : "library";
+            var shell = new dev.superjavendo.frontend2.Shell(dev.superjavendo.config.AppPaths.forCurrentUser(), new java.util.HashMap<>());
+            javax.imageio.ImageIO.write(shell.render(w, h, tab, args.length > 5 && args[5].equals("list"), args.length > 6 ? args[6] : ""), "png", new java.io.File(args[1]));
+            System.exit(0);
+        }
         Path rom = null;
         int headlessFrames = -1;
         String shot = null;
         int every = 0;
         int layerMask = 0x1F;
         boolean dump = false;
+        boolean ui2 = false;
         String wav = null;
         String everyPrefix = null;
         List<int[]> presses = new ArrayList<>();
         Map<Integer, String> profiles = new java.util.TreeMap<>();
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
+                case "--ui2": ui2 = true; break;
                 case "--headless": headlessFrames = Integer.parseInt(args[++i]); break;
                 case "--shot": shot = args[++i]; break;
                 case "--layers": layerMask = Integer.parseInt(args[++i], 16); break;
@@ -72,6 +82,10 @@ public final class Main {
                 }
                 default: rom = Path.of(args[i]);
             }
+        }
+        if (rom == null && headlessFrames < 0 && ui2) {
+            SwingUtilities.invokeLater(() -> new dev.superjavendo.frontend2.Shell(dev.superjavendo.config.AppPaths.forCurrentUser(), profiles).window().setVisible(true));
+            return;
         }
         if (rom == null && headlessFrames < 0) {
             SwingUtilities.invokeLater(() -> new dev.superjavendo.frontend.LauncherWindow(profiles).setVisible(true));
