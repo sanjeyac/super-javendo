@@ -54,7 +54,7 @@ You need a **ROM you own**: no commercial ROMs are included, and none ever will 
 ```sh
 mvn package                 # builds and runs the tests → target/superjavendo.jar
 
-java -jar target/superjavendo.jar                       # opens the game list
+java -jar target/superjavendo.jar                       # opens the frontend (library)
 java -jar target/superjavendo.jar game.sfc              # starts a ROM directly
 java -jar target/superjavendo.jar game.sfc -p1 easysmx -p2 keyboard2   # controller profile per player
 java -jar target/superjavendo.jar --controllers         # controller configurator only
@@ -72,14 +72,23 @@ java -jar target/superjavendo.jar --controllers         # controller configurato
 
 ## Frontend
 
-- **Game list**: "Scansiona cartella…" (scan folder) searches recursively for ROMs and records them in `~/.config/superjavendo/game.list`.
-  Selecting a game shows the screenshot of its last save, or its cover art
-  (`~/.config/superjavendo/game-covers/<rom name>.png`; covers are copyrighted and are not in the repository).
-- **START / RESET** launch and reset the game, which runs in a separate window.
-- **Controller configurator**: an image of an SNES pad; click a button to see its bound inputs and add or
-  remove a binding by pressing the key (or the joystick button).
+<p align="center">
+  <img src="screenshot/screenshot.png" alt="SuperJavendo library: cover grid, filters and the save states of the selected game" width="820">
+</p>
 
-The frontend UI is currently in Italian.
+Running the jar without a ROM opens the frontend (the original one is still available with `--ui-legacy`):
+
+- **Library**: cover grid or list, collections (all, recently played, favourites, no cover), genre and player filters, search,
+  sorting, favourites, play time and the five save-state slots of the selected game. Covers are looked up by file name in
+  `~/.config/superjavendo/game-covers/` and in a `covers/` folder next to the ROMs (they are copyrighted and not in the repository).
+- **ROM Manager**: ROM folders, a table with the status of every file (OK, duplicate, no cover, unrecognised, error), version groups
+  with the main file of your choice, hide / move to the trash, covers from an image file. Optional metadata comes from a
+  `games.tsv` keyed by CRC32.
+- **Controller**: one profile per device, a clickable pad drawing, several inputs per button, "add input" listening mode,
+  live test, emulator shortcuts, and which profiles each player uses.
+- **Settings**: language, default video filter, window size, volume, folders.
+- **Languages**: English, Italiano, Español, Français, Deutsch, Português, Nederlands, Polski (follows the system language unless
+  you choose one in Settings).
 
 ## Configuration
 
@@ -90,6 +99,11 @@ controllers.cfg          # which profiles each player uses: player1=keyboard,eas
 joystick/<name>.cfg      # one profile per device (created on first run: keyboard, keyboard2, easysmx, xbox)
 states/<rom>.state       # slot 0;  <rom>.N.state for slots 1…4
 game.list                # games found by the scan
+sources.tsv              # ROM folders (ROM Manager)
+library-user.tsv         # favourites, last played, play time
+library-overrides.tsv    # hidden files and the main file of each version group
+games.tsv                # optional metadata: CRC32, title, year, publisher, genre, players, region
+settings.cfg             # language, video filter, window size, volume
 game-covers/             # optional cover art
 ```
 
