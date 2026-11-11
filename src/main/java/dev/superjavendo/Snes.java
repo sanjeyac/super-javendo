@@ -46,6 +46,7 @@ public final class Snes {
     }
 
     public boolean pcTrace;
+    private int nmiDelay;
 
     private void runScanline(int v) {
         Timing t = timing;
@@ -62,7 +63,7 @@ public final class Snes {
         if (v == Timing.VBLANK_START) {
             bus.ppu.vblankStart();
             t.nmiFlag = true;
-            if ((t.nmitimen & 0x80) != 0) cpu.nmiPending = true;
+            if ((t.nmitimen & 0x80) != 0) nmiDelay = 1;   // the CPU only takes the NMI after the next instruction: a polling loop can still see the flag
             if ((t.nmitimen & 1) != 0) joypad.autoRead();
         }
         t.autoJoyBusy = (t.nmitimen & 1) != 0 && v >= Timing.VBLANK_START && v < Timing.VBLANK_START + 3;
@@ -75,6 +76,7 @@ public final class Snes {
             cpu.irqLine = t.irqFlag || (cart.coprocessor != null && cart.coprocessor.irq());
             t.h = clock;
             int mc = cpu.step() * CLOCKS_PER_CYCLE + bus.takeStall();
+            if (nmiDelay > 0 && --nmiDelay == 0) cpu.nmiPending = true;
             bus.apu.tick(mc);
             if (cart.coprocessor != null) cart.coprocessor.tick(mc);
             clock += mc;
