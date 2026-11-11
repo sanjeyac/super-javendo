@@ -100,4 +100,25 @@ class RomManagerTest {
         s2.remove(tmp.resolve("roms"));
         assertEquals(1, s2.folders().size());
     }
+
+    @Test void noIntroColumn() throws Exception {
+        Path dat = tmp.resolve("nointro.dat");
+        java.nio.file.Files.writeString(dat, "clrmamepro (\n\tname \"X\"\n)\n\ngame (\n\tname \"F-Zero (USA)\"\n\tregion \"USA\"\n"
+                + "\trom ( name \"F-Zero (USA).sfc\" size 524288 crc 0000abcd md5 AA sha1 BB )\n)\n");
+        NoIntroDb db = NoIntroDb.load(dat);
+        assertEquals(1, db.size());
+        assertEquals("F-Zero (USA)", db.nameOf("0000ABCD"));
+        Overrides ov = new Overrides(tmp.resolve("o.tsv"));
+        Game hit = game("a.sfc", 512, META);
+        Game miss = new Game(hit.entry(), hit.title(), "", 0, "", 0, "", "FFFFFFFF", 512, 1, "other");
+        RomCatalog cat = new RomCatalog(List.of(hit, miss), ov, g -> true, true, db);
+        assertEquals(RomCatalog.NoIntro.VERIFIED, cat.rows().get(0).noIntro());
+        assertEquals("F-Zero (USA)", cat.rows().get(0).noIntroName());
+        assertEquals(RomCatalog.NoIntro.NOT_VERIFIED, cat.rows().get(1).noIntro());
+        assertEquals(RomCatalog.NoIntro.NO_DAT, new RomCatalog(List.of(hit), ov, g -> true, true).rows().get(0).noIntro());
+        // the "CRC mismatch" filter lists only the files whose CRC the DAT does not know
+        assertEquals(1, cat.count(RomCatalog.Filter.BAD_CRC));
+        assertEquals(miss.path(), cat.view(RomCatalog.Filter.BAD_CRC, "").get(0).game().path());
+        assertEquals(0, new RomCatalog(List.of(hit, miss), ov, g -> true, true).count(RomCatalog.Filter.BAD_CRC));   // no DAT: nothing to compare with
+    }
 }

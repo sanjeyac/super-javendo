@@ -20,6 +20,8 @@ public final class Settings {
     public int scale = 3;
     /** 0..100. */
     public int volume = 100;
+    /** Start games in full screen (F11 toggles it in game, Esc leaves it). */
+    public boolean fullscreen = false;
 
     private final Path file;
 
@@ -39,6 +41,7 @@ public final class Settings {
                     case "language" -> s.language = v;
                     case "video.filter" -> { if (FILTERS.contains(v)) s.filter = v; }
                     case "video.scale" -> s.scale = clamp(v, MIN_SCALE, MAX_SCALE, s.scale);
+                    case "video.fullscreen" -> s.fullscreen = v.equalsIgnoreCase("true") || v.equals("1");
                     case "audio.volume" -> s.volume = clamp(v, 0, 100, s.volume);
                     default -> { }
                 }
@@ -53,13 +56,30 @@ public final class Settings {
         try { return Math.max(lo, Math.min(hi, Integer.parseInt(v))); } catch (NumberFormatException e) { return dflt; }
     }
 
+    /**
+     * Writes the settings. The file is shared with the {@code playerN=} lines (see {@link AppPaths#controllersFile()}),
+     * so every line that is not one of ours is kept, and ours are updated where they are.
+     */
     public void save() {
+        java.util.LinkedHashMap<String, String> mine = new java.util.LinkedHashMap<>();
+        mine.put("language", "language=" + language + "     # empty = system language");
+        mine.put("video.filter", "video.filter=" + filter + "     # nearest | sharp | smooth");
+        mine.put("video.scale", "video.scale=" + scale);
+        mine.put("video.fullscreen", "video.fullscreen=" + fullscreen + "     # start games in full screen");
+        mine.put("audio.volume", "audio.volume=" + volume);
         List<String> out = new ArrayList<>();
-        out.add("# SuperJavendo settings");
-        out.add("language=" + language + "     # empty = system language");
-        out.add("video.filter=" + filter + "     # nearest | sharp | smooth");
-        out.add("video.scale=" + scale);
-        out.add("audio.volume=" + volume);
+        try { if (Files.exists(file)) out.addAll(Files.readAllLines(file, StandardCharsets.UTF_8)); } catch (IOException ignored) { }
+        if (out.isEmpty()) out.add("# SuperJavendo settings");
+        java.util.Set<String> done = new java.util.HashSet<>();
+        for (int i = 0; i < out.size(); i++) {
+            String t = out.get(i).trim();
+            int eq = t.indexOf('=');
+            if (eq <= 0 || t.startsWith("#")) continue;
+            String key = t.substring(0, eq).trim();
+            if (mine.containsKey(key)) { out.set(i, mine.get(key)); done.add(key); }
+        }
+        int at = 1;                                        // missing keys go right after the title comment, before the players
+        for (var e : mine.entrySet()) if (!done.contains(e.getKey())) out.add(Math.min(at++, out.size()), e.getValue());
         try {
             Files.createDirectories(file.getParent());
             Files.write(file, out, StandardCharsets.UTF_8);

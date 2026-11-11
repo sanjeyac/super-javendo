@@ -24,6 +24,7 @@ final class LibraryData {
     final Meta crcs;
     private final Covers covers;
     private MetaDb db = new MetaDb();
+    private NoIntroDb noIntro = new NoIntroDb();
     private List<Game> all = List.of();
     private RomCatalog catalog;
 
@@ -46,12 +47,19 @@ final class LibraryData {
     }
 
     List<Game> all() { return all; }
+
+    /** Whether the CRC32 of the file is a verified dump in the No-Intro DAT; NO_DAT if there is no DAT or the CRC is not known yet. */
+    RomCatalog.NoIntro noIntroStatus(Game g) {
+        if (noIntro.size() == 0 || g.crc32() == null) return RomCatalog.NoIntro.NO_DAT;
+        return noIntro.nameOf(g.crc32()) != null ? RomCatalog.NoIntro.VERIFIED : RomCatalog.NoIntro.NOT_VERIFIED;
+    }
     RomCatalog catalog() { return catalog; }
     MetaDb metadata() { return db; }
 
     /** Reads games.tsv again and recomputes games and catalogue from the current game list (CRCs only from the cache). */
     void rebuild() {
         db = MetaDb.load(paths.metadataFile());
+        noIntro = NoIntroDb.load(paths.noIntroFile());
         List<Game> out = new ArrayList<>();
         for (GameEntry e : gameList.games()) {
             String crc = crcs.cached(e.path());
@@ -60,7 +68,7 @@ final class LibraryData {
             out.add(Game.of(e, db.get(crc), crc, size));
         }
         all = out;
-        catalog = new RomCatalog(all, overrides, g -> covers.exists(g.path()), db.size() > 0);
+        catalog = new RomCatalog(all, overrides, g -> covers.exists(g.path()), db.size() > 0, noIntro);
     }
 
     /** Computes the CRC32 of every listed ROM not in the cache. @return true if any was computed */

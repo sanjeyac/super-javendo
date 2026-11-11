@@ -85,6 +85,8 @@ public final class Bus implements Memory, Stateful {
     private int regRead(int off) {
         Timing t = timing;
         if (readHist != null) readHist.merge(off, 1, Integer::sum);
+        if (ioTrace && (off == 0x4016 || off == 0x4017 || (off >= 0x4218 && off <= 0x421B) || off == 0x4212))
+            System.out.printf("f%d v=%d h=%d: R %04X PC=%06X%n", ppu.traceFrame, timing.v, timing.h, off, cpu != null ? cpu.pcFull() : 0);
         if (off >= 0x4300 && off < 0x4380) return dma.readReg(off & 0xFF);
         if (off >= 0x2140 && off < 0x2180) return apu.readPort(off & 3);
         switch (off) {
@@ -116,7 +118,7 @@ public final class Bus implements Memory, Stateful {
     public boolean watch, watch2, ioTrace;
     private void regWrite(int off, int v) {
         Timing t = timing;
-        if (ioTrace && off >= 0x4200 && off <= 0x420D) System.out.printf("f%d v=%d h=%d: W %04X=%02X PC=%06X%n", ppu.traceFrame, timing.v, timing.h, off, v, cpu != null ? cpu.pcFull() : 0);
+        if (ioTrace && (off >= 0x4200 && off <= 0x420D || off == 0x4016)) System.out.printf("f%d v=%d h=%d: W %04X=%02X PC=%06X%n", ppu.traceFrame, timing.v, timing.h, off, v, cpu != null ? cpu.pcFull() : 0);
         if (watch && (off == 0x210D || off == 0x210F) && cpu != null) System.out.printf("W %04X=%02X from PC=%06X A=%04X X=%04X Y=%04X%n", off, v, cpu.pcFull(), cpu.a, cpu.x, cpu.y);
         if (off >= 0x4300 && off < 0x4380) { dma.writeReg(off & 0xFF, v); return; }
         if (off >= 0x2100 && off < 0x2134) { ppu.write(off & 0xFF, v); return; }

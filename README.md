@@ -95,7 +95,6 @@ Running the jar without a ROM opens the frontend (the original one is still avai
 Everything lives in `~/.config/superjavendo/` (or `$XDG_CONFIG_HOME/superjavendo/`):
 
 ```
-controllers.cfg          # which profiles each player uses: player1=keyboard,easysmx@0
 joystick/<name>.cfg      # one profile per device (created on first run: keyboard, keyboard2, easysmx, xbox)
 states/<rom>.state       # slot 0;  <rom>.N.state for slots 1…4
 game.list                # games found by the scan
@@ -103,7 +102,7 @@ sources.tsv              # ROM folders (ROM Manager)
 library-user.tsv         # favourites, last played, play time
 library-overrides.tsv    # hidden files and the main file of each version group
 games.tsv                # optional metadata: CRC32, title, year, publisher, genre, players, region
-settings.cfg             # language, video filter, window size, volume
+settings.cfg             # language, video, volume, and which profiles each player uses: player1=keyboard,easysmx@0
 game-covers/             # optional cover art
 ```
 

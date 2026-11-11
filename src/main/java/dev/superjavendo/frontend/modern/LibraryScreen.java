@@ -37,7 +37,7 @@ final class LibraryScreen extends JPanel {
         this.model = model;
         this.covers = covers;
         grid = new GridView(covers, shell::isRunning, model::favorite);
-        list = new ListView(model::favorite, model::lastPlayed, model::playSeconds);
+        list = new ListView(model::favorite, model::lastPlayed, model::playSeconds, model::noIntro);
         detail = new DetailPanel(covers, model, shell::isRunning);
         setBackground(Pal.MAIN);
 
@@ -119,6 +119,7 @@ final class LibraryScreen extends JPanel {
         grid.onStar(this::toggleFavorite);
         list.onStar(this::toggleFavorite);
         detail.onPlay(() -> { if (current != null) shell.play(current); });
+        detail.onResume(slot -> { if (current != null) shell.play(current, slot); });
         detail.onStar(() -> { if (current != null) toggleFavorite(current); });
         detail.onAssignCover(() -> { if (current != null) shell.showRomManager(current); });
         covers.onLoaded(() -> SwingUtilities.invokeLater(() -> { grid.repaint(); detail.repaint(); }));
@@ -253,22 +254,6 @@ final class LibraryScreen extends JPanel {
                 left.add(new Widgets.NavRow(e.getKey(), e.getValue(), e.getKey().equalsIgnoreCase(model.genre),
                         () -> { model.genre = e.getKey().equalsIgnoreCase(model.genre) ? null : e.getKey(); refresh(); }));
         }
-        left.add(Box.createVerticalStrut(22));
-        left.add(section(t("field.players")));
-        JPanel pl = new JPanel(new GridBagLayout());
-        pl.setOpaque(false);
-        pl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-        String[] names = {t("filter.all"), "1", "2+"};
-        for (int i = 0; i < 3; i++) {
-            final int v = i;
-            boolean on = model.players == v;
-            GridBagConstraints gc = new GridBagConstraints();
-            gc.gridx = i; gc.weightx = i == 0 ? 2 : 1; gc.fill = GridBagConstraints.BOTH; gc.insets = new Insets(0, i == 0 ? 0 : 8, 0, 0);
-            Ui.Btn pb = new Ui.Btn(names[i], on ? Pal.ACCENT : Pal.CARD, on ? Color.WHITE : Pal.TXT, on ? null : Pal.CARD_LINE).onClick(() -> { model.players = v; refresh(); });
-            pb.setPreferredSize(new Dimension(40, 40));
-            pl.add(pb, gc);
-        }
-        left.add(pl);
         left.add(Box.createVerticalGlue());
         left.revalidate();
         left.repaint();
@@ -284,6 +269,24 @@ final class LibraryScreen extends JPanel {
     }
 
     Game selectedGame() { return current; }
+
+    /** Pad buttons without a key equivalent: Y favourite, X/Start play, L/R previous/next collection, Select search. */
+    void padAction(String b) {
+        LibraryModel.Collection[] all = LibraryModel.Collection.values();
+        switch (b) {
+            case "y" -> { if (current != null) toggleFavorite(current); }
+            case "x", "start" -> { if (current != null) shell.play(current); }
+            case "l", "r" -> {
+                int i = (model.collection.ordinal() + (b.equals("r") ? 1 : all.length - 1)) % all.length;
+                model.collection = all[i];
+                refresh();
+            }
+            case "select" -> search.requestFocusInWindow();
+            case "b" -> { if (!search.getText().isEmpty()) search.setText(""); focusCatalogue(); }
+            case "a" -> focusCatalogue();
+            default -> { }
+        }
+    }
 
     /** For screenshots: list or grid view and a search text. */
     void preset(boolean listView, String query) { search.setText(query); setListMode(listView); }

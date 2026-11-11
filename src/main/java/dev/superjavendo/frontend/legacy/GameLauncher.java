@@ -20,6 +20,11 @@ public final class GameLauncher {
      * @return the window (created on the event thread), or null if the ROM could not be loaded
      */
     public static EmuWindow open(Path rom, Map<Integer, String> profiles, boolean exitOnClose) throws Exception {
+        return open(rom, profiles, exitOnClose, -1);
+    }
+
+    /** @param resumeSlot save-state slot to load right after starting (0 = quick slot), or -1 to start from power-on */
+    public static EmuWindow open(Path rom, Map<Integer, String> profiles, boolean exitOnClose, int resumeSlot) throws Exception {
         AppPaths paths = AppPaths.forCurrentUser();
         Cartridge cart = Cartridge.load(rom);
         String name = rom.getFileName().toString();
@@ -34,6 +39,7 @@ public final class GameLauncher {
         Runnable create = () -> ref.set(new EmuWindow(snes, srm, slot -> paths.stateFile(rom, slot), profiles, exitOnClose));
         if (SwingUtilities.isEventDispatchThread()) create.run();
         else SwingUtilities.invokeAndWait(create);
+        if (resumeSlot >= 0) ref.get().requestLoadSlot(resumeSlot);
         return ref.get();
     }
 }

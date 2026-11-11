@@ -35,7 +35,14 @@ public final class Joypad implements Stateful {
         return (shift[port] >> (15 - idx[port]++)) & 1;
     }
 
-    public void autoRead() { auto[0] = buttons[0]; auto[1] = buttons[1]; }
+    /**
+     * Auto-joypad read at the start of VBlank. The hardware clocks all 16 bits out of each pad, so afterwards the
+     * serial registers are empty and {@code $4016/$4017} read 1 until the game strobes again. Games rely on it: the
+     * Super Multitap routine of "Dragon: The Bruce Lee Story" reads that 1 to tell a standard pad from other devices.
+     */
+    public void autoRead() {
+        for (int p = 0; p < 2; p++) { auto[p] = buttons[p]; shift[p] = buttons[p]; idx[p] = 16; }
+    }
 
     /** $4218 + i. */
     public int autoReg(int i) {

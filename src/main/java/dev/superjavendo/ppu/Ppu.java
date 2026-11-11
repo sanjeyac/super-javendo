@@ -8,13 +8,30 @@ import java.io.IOException;
 import java.util.Arrays;
 
 /**
- * Scanline PPU. Supports BG modes 0-4 and 7, sprites, windows, mosaic and colour math
- * (main + sub screen). Hi-res modes (5/6), offset-per-tile and interlace are not emulated.
+ * Scanline PPU. Supports BG modes 0-7, sprites, windows, mosaic and colour math (main + sub screen), hi-res
+ * (modes 5/6 and pseudo hi-res) and interlace. Offset-per-tile is not emulated.
+ *
+ * <p>Output: lo-res frames live in {@link #frame} (256x224). As soon as a line of the frame is hi-res or interlaced the
+ * frame switches to a 512-wide buffer ({@code hiFrame}, 224 rows, or 448 when interlaced; each interlaced field
+ * rewrites its own rows and keeps the other field's from the previous frame). {@link #outputPixels()},
+ * {@link #outputWidth()} and {@link #outputHeight()} describe the last completed frame.
  */
 public final class Ppu implements Stateful {
     public static final int WIDTH = 256, HEIGHT = 224;
     /** ARGB framebuffer, WIDTH x HEIGHT. */
     public final int[] frame = new int[WIDTH * HEIGHT];
+
+    public static final int HI_WIDTH = 512, HI_HEIGHT = 448;
+    private final int[] hiFrame = new int[HI_WIDTH * HI_HEIGHT];
+    private boolean hiActive, frameInterlace;
+    private int field;                                  // toggles every frame (STAT78 bit 7, interlace field)
+    private int[] outBuf = frame;
+    private int outW = WIDTH, outH = HEIGHT;
+
+    /** Pixels of the last completed frame: {@link #frame} (256x224) or the 512-wide buffer. Valid after VBlank starts. */
+    public int[] outputPixels() { return outBuf; }
+    public int outputWidth() { return outW; }
+    public int outputHeight() { return outH; }
 
     private final byte[] vram = new byte[0x10000];
     private final int[] cgram = new int[256];
@@ -76,6 +93,9 @@ public final class Ppu implements Stateful {
     // per-line work buffers
     private final int[][] bgCol = new int[4][WIDTH];
     private final int[][] bgPrio = new int[4][WIDTH];
+    // hi-res BGs (modes 5/6): 512 dots per line; odd dots feed the main screen, even dots the sub screen
+    private final int[][] hiCol = new int[4][HI_WIDTH], hiPri = new int[4][HI_WIDTH];
+    private final int[][] bgColSub = new int[4][WIDTH], bgPrioSub = new int[4][WIDTH];
     private final int[] objCol = new int[WIDTH], objPrio = new int[WIDTH];
     private final boolean[] objMath = new boolean[WIDTH];
     private final boolean[][] win = new boolean[6][WIDTH];
@@ -110,9 +130,15 @@ public final class Ppu implements Stateful {
     /** Called by the scheduler when VBlank starts. */
     public void vblankStart() {
         if ((inidisp & 0x80) == 0) oamAddr = oamAddrReg << 1;
+        if (hiActive) { outBuf = hiFrame; outW = HI_WIDTH; outH = frameInterlace ? HI_HEIGHT : HEIGHT; }
+        else { outBuf = frame; outW = WIDTH; outH = HEIGHT; }
     }
 
-    public void frameStart() { rangeOver = timeOver = false; }
+    public void frameStart() {
+        rangeOver = timeOver = false;
+        hiActive = false; frameInterlace = false;
+        field ^= 1;
+    }
 
     // ------------------------------------------------------------------ registers
 
@@ -233,6 +259,7 @@ public final class Ppu implements Stateful {
                 return v;
             }
             case 0x3E: return 0x01 | (rangeOver ? 0x40 : 0) | (timeOver ? 0x80 : 0);
+            case 0x3F: return 0x03 | (field << 7);
             default: return 0;
         }
     }
@@ -242,33 +269,81 @@ public final class Ppu implements Stateful {
     /** Renders screen row s (0..223). */
     public void renderLine(int s) {
         int base = s * WIDTH;
-        if ((inidisp & 0x80) != 0) { Arrays.fill(frame, base, base + WIDTH, 0xFF000000); return; }
+        boolean interlace = (setini & 1) != 0;
         int mode = bgmode & 7;
+        boolean hiLine = mode == 5 || mode == 6 || (setini & 8) != 0;
+        if (interlace) frameInterlace = true;
+        if ((inidisp & 0x80) != 0) {
+            Arrays.fill(frame, base, base + WIDTH, 0xFF000000);
+            if (hiLine || interlace || hiActive) { activateHi(s); copyLoToHi(s); }
+            return;
+        }
         dbgScroll[0][s] = hofs[0]; dbgScroll[1][s] = hofs[1]; dbgScroll[2][s] = vofs[0]; dbgScroll[3][s] = vofs[1];
         for (int b = 0; b < 4; b++) { Arrays.fill(bgCol[b], 0); }
+        if (mode == 5 || mode == 6) for (int b = 0; b < 4; b++) Arrays.fill(bgColSub[b], 0);
         Arrays.fill(objCol, 0);
 
+        boolean bgHires = mode == 5 || mode == 6;
         switch (mode) {
             case 0: for (int b = 0; b < 4; b++) renderBg(b, s, 2, true); break;
             case 1: renderBg(0, s, 4, false); renderBg(1, s, 4, false); renderBg(2, s, 2, false); break;
             case 2: renderBg(0, s, 4, false); renderBg(1, s, 4, false); break;
             case 3: renderBg(0, s, 8, false); renderBg(1, s, 4, false); break;
             case 4: renderBg(0, s, 8, false); renderBg(1, s, 2, false); break;
-            case 5: renderBg(0, s, 4, false); renderBg(1, s, 2, false); break;
-            case 6: renderBg(0, s, 4, false); break;
+            case 5: renderBgHires(0, s, 4); renderBgHires(1, s, 2); break;
+            case 6: renderBgHires(0, s, 4); break;
             default: renderMode7(s); break;
         }
         if (((tm | ts) & 0x10) != 0) renderObjects(s);
         computeWindows();
 
         int[] order = order(mode);
-        compose(tm & debugMask, tmw, mainCol, mainLay, mainObjMath, order, false);
-        boolean useSub = (cgadsub & 0x3F) != 0 && (cgwsel & 2) != 0;
-        if (useSub) compose(ts, tsw, subCol, subLay, subObjMath, order, true);
-
+        int[][] subC = bgCol, subP = bgPrio;
+        if (bgHires) { subC = bgColSub; subP = bgPrioSub; }
+        compose(tm & debugMask, tmw, bgCol, bgPrio, mainCol, mainLay, mainObjMath, order, debugMask != 0x1F ? 0x7C1F : cgram[0]);
         int bright = inidisp & 0xF;
         int fixed = fixR | (fixG << 5) | (fixB << 10);
-        boolean subtract = (cgadsub & 0x80) != 0, halfBit = (cgadsub & 0x40) != 0;
+        boolean subtract = (cgadsub & 0x80) != 0, halveBit = (cgadsub & 0x40) != 0;
+
+        if (hiLine) {
+            compose(ts, tsw, subC, subP, subCol, subLay, subObjMath, order, cgram[0]);
+            activateHi(s);
+            int row = ((interlace ? (s << 1) | field : s)) * HI_WIDTH;
+            boolean useSubScreen = (cgwsel & 2) != 0;
+            // colour-maths state carried from pixel to pixel, as the hardware does (the sub-screen dot of a pair is
+            // blended with the state left by the main-screen dot of the previous pair)
+            int aboveColor = cgram[0];
+            boolean belowEn = false, aboveEn = bgHires, blendSub = false, halve = false;   // modes 5/6: snes9x shows the first sub dot as is
+            for (int x = 0; x < WIDTH; x++) {
+                int belowColor = subCol[x];
+                boolean transparent = subLay[x] == 5;
+                int belowOut = !belowEn ? (aboveEn ? belowColor : 0)
+                        : blend(aboveEn ? belowColor : 0, blendSub ? aboveColor : fixed, subtract, halve);
+
+                int c = mainCol[x], lay = mainLay[x];
+                boolean inCw = win[5][x];
+                boolean layerMath = lay == 4 ? mainObjMath[x] && (cgadsub & 0x10) != 0 : (cgadsub & (1 << lay)) != 0;
+                aboveColor = c;
+                belowEn = layerMath && !region((cgwsel >> 4) & 3, inCw);
+                aboveEn = !region((cgwsel >> 6) & 3, inCw);
+                int aboveOut;
+                if (!belowEn) aboveOut = aboveEn ? c : 0;
+                else {
+                    if (useSubScreen && transparent) { blendSub = false; halve = false; }
+                    else { blendSub = useSubScreen; halve = halveBit && aboveEn; }
+                    aboveOut = blend(aboveEn ? c : 0, blendSub ? belowColor : fixed, subtract, halve);
+                }
+                int o = row + (x << 1);
+                boolean dotHires = bgHires || (setini & 8) != 0;
+                if (x == 0 && !bgHires) belowOut = aboveOut;   // pseudo hi-res: the first dot of a line repeats the main dot in snes9x (bsnes leaves it black)
+                hiFrame[o] = toRgb(dotHires ? belowOut : aboveOut, bright);
+                hiFrame[o + 1] = toRgb(aboveOut, bright);
+            }
+            return;
+        }
+
+        boolean useSub = (cgadsub & 0x3F) != 0 && (cgwsel & 2) != 0;
+        if (useSub) compose(ts, tsw, subC, subP, subCol, subLay, subObjMath, order, fixed);
         for (int x = 0; x < WIDTH; x++) {
             int c = mainCol[x];
             int lay = mainLay[x];
@@ -278,7 +353,7 @@ public final class Ppu implements Stateful {
             if (lay == 4) enabled = mainObjMath[x] && (cgadsub & 0x10) != 0;
             else enabled = (cgadsub & (1 << lay)) != 0;
             if (enabled && !region((cgwsel >> 4) & 3, inCw)) {
-                int sc; boolean half = halfBit;
+                int sc; boolean half = halveBit;
                 if (useSub) {
                     sc = subCol[x];
                     if (subLay[x] == 5) { sc = fixed; half = false; }
@@ -287,6 +362,20 @@ public final class Ppu implements Stateful {
             }
             frame[base + x] = toRgb(c, bright);
         }
+        if (interlace || hiActive) { activateHi(s); copyLoToHi(s); }
+    }
+
+    /** The frame becomes 512 wide: the lines already drawn at 256 are widened. */
+    private void activateHi(int s) {
+        if (hiActive) return;
+        hiActive = true;
+        for (int y = 0; y < s; y++) copyLoToHi(y);
+    }
+
+    /** Doubles a lo-res row into the hi-res buffer (row 2y+field when interlaced). */
+    private void copyLoToHi(int y) {
+        int row = ((setini & 1) != 0 ? (y << 1) | field : y) * HI_WIDTH, src = y * WIDTH;
+        for (int x = 0; x < WIDTH; x++) { int c = frame[src + x]; hiFrame[row + 2 * x] = c; hiFrame[row + 2 * x + 1] = c; }
     }
 
     private static boolean region(int mode, boolean inWin) {
@@ -330,9 +419,8 @@ public final class Ppu implements Stateful {
         }
     }
 
-    private void compose(int enable, int winEnable, int[] outCol, int[] outLay, boolean[] outMath,
-                         int[] order, boolean sub) {
-        int backdrop = sub ? (fixR | (fixG << 5) | (fixB << 10)) : (debugMask != 0x1F ? 0x7C1F : cgram[0]);
+    private void compose(int enable, int winEnable, int[][] bgc, int[][] bgp, int[] outCol, int[] outLay, boolean[] outMath,
+                         int[] order, int backdrop) {
         for (int x = 0; x < WIDTH; x++) {
             int col = backdrop, lay = 5;
             boolean math = false;
@@ -341,7 +429,7 @@ public final class Ppu implements Stateful {
                 if ((enable & (1 << l)) == 0) continue;
                 int c;
                 if (l == 4) { c = objCol[x]; if (c == 0 || objPrio[x] != p) continue; }
-                else { c = bgCol[l][x]; if (c == 0 || bgPrio[l][x] != p) continue; }
+                else { c = bgc[l][x]; if (c == 0 || bgp[l][x] != p) continue; }
                 if ((winEnable & (1 << l)) != 0 && win[l][x]) continue;
                 col = c & 0x7FFF; lay = l; math = l == 4 && objMath[x];
                 break;
@@ -449,6 +537,61 @@ public final class Ppu implements Stateful {
         }
     }
 
+    /**
+     * Modes 5 and 6: the BG is 512 dots wide (scroll counts in lo-res pixels, so it moves two dots at a time) and its
+     * tiles are always 16 dots wide (two 8x8 characters); the tile-size bit only makes them 16 rows tall. Odd dots are
+     * the main screen, even dots the sub screen. Interlace doubles the vertical resolution (the field picks the row).
+     */
+    private void renderBgHires(int bg, int s, int bpp) {
+        int sc = bgsc[bg];
+        boolean wide = (sc & 1) != 0, tall = (sc & 2) != 0;
+        int mapBase = (sc & 0xFC) << 8;
+        int tileSize = (bgmode >> (4 + bg)) & 1;
+        int msize = (mosaic >> 4) + 1;
+        boolean mos = (mosaic & (1 << bg)) != 0;     // even with a block of 1 the main dot repeats the sub dot
+        int ys = mos ? s - s % msize : s;
+        int vpixel = ys + 1;
+        if ((setini & 1) != 0) vpixel = (vpixel << 1) | (field != 0 && !mos ? 1 : 0);
+        int voffset = vpixel + vofs[bg];
+        int hscroll = hofs[bg] << 1;
+        int tileRows = tall ? 64 : 32, tileCols = wide ? 64 : 32;
+        int ty = (voffset >> (3 + tileSize)) & (tileRows - 1);
+        int charBase = bgChar[bg], tileBytes = bpp * 8;
+        int[] col = hiCol[bg], pri = hiPri[bg];
+        int lastTx = -1, entry = 0;
+        for (int h = 0; h < HI_WIDTH; h++) {
+            int hd = h;
+            if (mos) { int x = h >> 1; hd = (x - x % msize) << 1; }       // both dots take the first even dot of the mosaic block
+            int p = hd + hscroll;
+            int tx = (p >> 4) & (tileCols - 1);
+            if (tx != lastTx) {
+                int screen = ((tx >> 5) & 1) + (((ty >> 5) & 1) * (wide ? 2 : 1));
+                entry = vramWord(mapBase + screen * 0x400 + (ty & 31) * 32 + (tx & 31));
+                lastTx = tx;
+            }
+            int tnum = entry & 0x3FF, palette = (entry >> 10) & 7;
+            boolean hf = (entry & 0x4000) != 0, vf = (entry & 0x8000) != 0;
+            int ch = tnum + ((((p >> 3) & 1) != 0) != hf ? 1 : 0);
+            int fx = p & 7;
+            if (hf) fx = 7 - fx;
+            int fy = voffset & 7;
+            if (tileSize == 1 && (((voffset >> 3) & 1) != 0) != vf) ch += 16;
+            if (vf) fy = 7 - fy;
+            int a = (charBase + (ch & 0x3FF) * tileBytes) & 0xFFFF;
+            int bit = 7 - fx, r = fy * 2;
+            int c = ((vram[(a + r) & 0xFFFF] >> bit) & 1) | (((vram[(a + r + 1) & 0xFFFF] >> bit) & 1) << 1);
+            if (bpp >= 4) c |= (((vram[(a + 16 + r) & 0xFFFF] >> bit) & 1) << 2) | (((vram[(a + 17 + r) & 0xFFFF] >> bit) & 1) << 3);
+            if (c == 0) { col[h] = 0; continue; }
+            col[h] = 0x10000 | cgram[(palette * (1 << bpp) + c) & 0xFF];
+            pri[h] = (entry >> 13) & 1;
+        }
+        int[] mc = bgCol[bg], mp = bgPrio[bg], sc2 = bgColSub[bg], sp = bgPrioSub[bg];
+        for (int x = 0; x < WIDTH; x++) {
+            mc[x] = col[2 * x + 1]; mp[x] = pri[2 * x + 1];
+            sc2[x] = col[2 * x]; sp[x] = pri[2 * x];
+        }
+    }
+
     private void renderMode7(int s) {
         boolean flipX = (m7sel & 1) != 0, flipY = (m7sel & 2) != 0;
         int wrapMode = m7sel >> 6;
@@ -492,6 +635,7 @@ public final class Ppu implements Stateful {
         int smallW = OBJ_SMALL[sizeSel][0], smallH = OBJ_SMALL[sizeSel][1];
         int largeW = OBJ_LARGE[sizeSel][0], largeH = OBJ_LARGE[sizeSel][1];
         int first = oamPriority != 0 ? (oamAddrReg >> 1) & 0x7F : 0;
+        boolean oi = (setini & 2) != 0;                          // OBJ interlace: sprites are half as tall on a field
         int count = 0;
         for (int n = 0; n < 128; n++) {
             int i = (first + n) & 0x7F;
@@ -501,6 +645,7 @@ public final class Ppu implements Stateful {
             int y = oam[i * 4 + 1] & 0xFF;
             int x = (oam[i * 4] & 0xFF) | ((hi & 1) << 8);
             if (x >= 256) x -= 512;
+            if (oi) h = ((hi & 2) == 0 && sizeSel >= 6 ? 16 : h) >> 1;     // hardware quirk for the small size of bases 6 and 7
             if (((s - y) & 0xFF) >= h) continue;
             if (x + w <= 0 || x >= 256) continue;
             if (count == 32) { rangeOver = true; break; }
@@ -521,6 +666,13 @@ public final class Ppu implements Stateful {
             int prio = (attr >> 4) & 3, pal = (attr >> 1) & 7;
             int dy = (s - y) & 0xFF;
             int fy = vf ? h - 1 - dy : dy;
+            if (oi) {
+                int hf2 = !large && sizeSel >= 6 ? 16 : h;
+                int yy = dy << 1;
+                if (vf) yy = hf2 == w ? hf2 - 1 - yy : yy < w ? w - 1 - yy : w + (w - 1) - (yy - w);
+                yy = !vf ? yy + field : yy - field;
+                fy = yy & 255;
+            }
             int ty = fy >> 3, py = fy & 7;
             int tableBase = (attr & 1) != 0 ? nameGap : nameBase;
             for (int ix = 0; ix < w; ix++) {
@@ -570,5 +722,6 @@ public final class Ppu implements Stateful {
         fixR = in.i(); fixG = in.i(); fixB = in.i(); setini = in.i();
         rangeOver = in.b(); timeOver = in.b();
         in.ints(frame);
+        hiActive = false; frameInterlace = false; outBuf = frame; outW = WIDTH; outH = HEIGHT;
     }
 }

@@ -147,7 +147,7 @@ final class RomManagerScreen extends JPanel {
         for (var e : tabs.entrySet()) {
             RomCatalog.Filter f = e.getKey();
             boolean on = f == filter;
-            e.getValue().setText(f == RomCatalog.Filter.TO_FIX ? f.label() + " · " + cat.count(f) : f.label());
+            e.getValue().setText(f == RomCatalog.Filter.TO_FIX || f == RomCatalog.Filter.BAD_CRC ? f.label() + " · " + cat.count(f) : f.label());
             e.getValue().setColors(on ? Pal.ACTIVE : null, on ? Pal.TXT : Pal.TXT2, null);
             e.getValue().setPreferredSize(new Dimension(e.getValue().getPreferredSize().width, 36));
         }

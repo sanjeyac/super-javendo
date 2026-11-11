@@ -93,10 +93,9 @@ public final class Snes {
 
     /** Identifies the ROM a state belongs to, so a state is never loaded into the wrong game. */
     private byte[] screenshotPng() throws IOException {
-        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(
-                dev.superjavendo.ppu.Ppu.WIDTH, dev.superjavendo.ppu.Ppu.HEIGHT, java.awt.image.BufferedImage.TYPE_INT_RGB);
-        img.setRGB(0, 0, dev.superjavendo.ppu.Ppu.WIDTH, dev.superjavendo.ppu.Ppu.HEIGHT,
-                bus.ppu.frame, 0, dev.superjavendo.ppu.Ppu.WIDTH);
+        var ppu = bus.ppu;
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(ppu.outputWidth(), ppu.outputHeight(), java.awt.image.BufferedImage.TYPE_INT_RGB);
+        img.setRGB(0, 0, ppu.outputWidth(), ppu.outputHeight(), ppu.outputPixels(), 0, ppu.outputWidth());
         ByteArrayOutputStream png = new ByteArrayOutputStream();
         javax.imageio.ImageIO.write(img, "png", png);
         return png.toByteArray();

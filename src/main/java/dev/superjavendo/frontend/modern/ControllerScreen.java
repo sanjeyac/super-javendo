@@ -45,6 +45,7 @@ final class ControllerScreen extends JPanel {
     private boolean listening;
     private int listenLeft;
     private String listenMsg = "";
+    boolean listening() { return listenLeft > 0; }
     private final javax.swing.Timer listenTimer = new javax.swing.Timer(1000, e -> tickListen());
     private final KeyEventDispatcher keys = this::dispatch;
 

@@ -24,6 +24,8 @@ final class DetailPanel extends JComponent implements Scrollable {
     private Covers.Slot[] slots;
 
     private Runnable onPlay = () -> { }, onStar = () -> { }, onAssignCover = () -> { };
+    private java.util.function.IntConsumer onResume = s -> { };
+    private final Rectangle[] slotRects = new Rectangle[AppPaths.MAX_SLOT + 1];
     private Rectangle playRect = new Rectangle(), starRect = new Rectangle(), resumeRect = new Rectangle(), assignRect = new Rectangle();
     private int contentH = 600;
 
@@ -35,7 +37,11 @@ final class DetailPanel extends JComponent implements Scrollable {
         addMouseListener(new MouseAdapter() {
             @Override public void mousePressed(MouseEvent e) {
                 if (game == null) return;
-                if (playRect.contains(e.getPoint()) || resumeRect.contains(e.getPoint())) onPlay.run();
+                Covers.Slot best = latest();
+                if (resumeRect.contains(e.getPoint()) && best != null) { onResume.accept(best.slot()); return; }
+                for (int s = 0; s < slotRects.length; s++)
+                    if (slotRects[s] != null && slotRects[s].contains(e.getPoint()) && slots != null && slots[s].exists()) { onResume.accept(s); return; }
+                if (playRect.contains(e.getPoint())) onPlay.run();
                 else if (starRect.contains(e.getPoint())) onStar.run();
                 else if (assignRect.contains(e.getPoint())) onAssignCover.run();
             }
@@ -43,6 +49,8 @@ final class DetailPanel extends JComponent implements Scrollable {
     }
 
     void onPlay(Runnable r) { onPlay = r; }
+    /** A save state was chosen (the "Resume" link or one of the slot thumbnails): argument = slot. */
+    void onResume(java.util.function.IntConsumer r) { onResume = r; }
     void onStar(Runnable r) { onStar = r; }
     void onAssignCover(Runnable r) { onAssignCover = r; }
 
@@ -119,7 +127,8 @@ final class DetailPanel extends JComponent implements Scrollable {
         y += 48 + 24;
         int half = cw / 2;
         data(g2, t("field.genre"), game.genre().isEmpty() ? "—" : game.genre(), PAD, y, half);
-        data(g2, t("field.players"), Ui.players(game.players()), PAD + half, y, half);
+        RomCatalog.NoIntro ni = model.noIntro(game);
+        data(g2, t("field.nointro"), Ui.noIntro(ni), PAD + half, y, half, Ui.noIntroColor(ni));
         y += 50;
         data(g2, t("field.lastplayed"), Ui.lastPlayed(model.lastPlayed(game)), PAD, y, half);
         data(g2, t("field.playtime"), Ui.playTime(model.playSeconds(game)), PAD + half, y, half);
@@ -155,6 +164,7 @@ final class DetailPanel extends JComponent implements Scrollable {
         int n = AppPaths.MAX_SLOT + 1, gap = 8, tw = (cw - (n - 1) * gap) / n, th = tw * 7 / 8;
         for (int s = 0; s < n; s++) {
             int tx = PAD + s * (tw + gap);
+            slotRects[s] = new Rectangle(tx, y, tw, th);
             Covers.Slot sl = slots != null ? slots[s] : null;
             if (sl != null && sl.exists() && sl.shot() != null) Ui.fit(g2, sl.shot(), tx, y, tw, th, 6);
             else { Ui.fillRound(g2, tx, y, tw, th, 6, Pal.CARD, null); Ui.dashedRound(g2, tx, y, tw, th, 6, Pal.CARD_LINE); }
@@ -176,9 +186,11 @@ final class DetailPanel extends JComponent implements Scrollable {
         g2.dispose();
     }
 
-    private void data(Graphics2D g, String label, String value, int x, int y, int w) {
+    private void data(Graphics2D g, String label, String value, int x, int y, int w) { data(g, label, value, x, y, w, Pal.TXT); }
+
+    private void data(Graphics2D g, String label, String value, int x, int y, int w, Color color) {
         Ui.label(g, label, x, y + 8);
-        Ui.text(g, Ui.ellipsize(g.getFontMetrics(Pal.ui(15, 1)), value, w - 8), x, y + 30, Pal.ui(15, 1), Pal.TXT);
+        Ui.text(g, Ui.ellipsize(g.getFontMetrics(Pal.ui(15, 1)), value, w - 8), x, y + 30, Pal.ui(15, 1), color);
     }
 
     @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }

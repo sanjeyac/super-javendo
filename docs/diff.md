@@ -26,7 +26,7 @@ Dipendenze: `python3` + `numpy`, `java` 21+, jar compilato (`mvn -q package -Dsk
 - Input: `--press btn:da:a` = bottone premuto per i frame `da <= f < a`. Bottoni: `up down left right a b x y l r start select`.
   Porta 2 solo su `refrun.py` con `--press2` (superjavendo: configurare il profilo).
 - Stessi argomenti `--press` su entrambi, **copia-incolla la stessa riga**.
-- Risoluzione: 256x224 su entrambi. Il core libretro usa RGB565 (arrotondamenti): `compare.py` tollera delta ≤ 8 per canale.
+- Risoluzione: 256x224, ma 512x224 / 512x448 per hi-res e interlacciato (entrambi gli emulatori la scelgono per frame; `compare.py` confronta l'area comune). Il core libretro usa RGB565 (arrotondamenti): `compare.py` tollera delta ≤ 8 per canale.
 - Cartelle di lavoro: usare lo scratchpad, non `/tmp`.
 
 ## Procedura

@@ -48,6 +48,7 @@ public final class Shell extends JPanel {
 
         user.load();
         data = new LibraryData(paths, covers);
+        model.setNoIntro(data::noIntroStatus);
         model.setGames(data.all(), data.overrides);
         library = new LibraryScreen(this, model, covers, user);
         romManager = new RomManagerScreen(this, data, covers);
@@ -64,6 +65,12 @@ public final class Shell extends JPanel {
         updateRunning();
         updatePads();
         computeCrcsAsync();
+        new PadNav(paths, () -> !controller.listening() && screens.isShowing()
+                && (running == null || !running.isDisplayable() || !running.isActive()), this::padAction);
+    }
+
+    private void padAction(String b) {
+        if (library.isShowing()) library.padAction(b);
     }
 
     // ------------------------------------------------------------------------------------------ data
@@ -192,18 +199,22 @@ public final class Shell extends JPanel {
 
     boolean isRunning(Game g) { return runningGame != null && running != null && running.isDisplayable() && runningGame.path().equals(g.path()); }
 
-    void play(Game g) {
+    void play(Game g) { play(g, -1); }
+
+    /** Starts the game, loading the given save-state slot right away (-1 = from power-on). A game already running just loads it. */
+    void play(Game g, int resumeSlot) {
         if (g == null) return;
-        if (isRunning(g)) { running.toFront(); return; }
+        if (isRunning(g)) { running.toFront(); if (resumeSlot >= 0) running.requestLoadSlot(resumeSlot); return; }
         closeRunning();
         try {
-            EmuWindow w = GameLauncher2.open(g.path(), profiles);
+            EmuWindow w = GameLauncher2.open(g.path(), profiles, resumeSlot);
             running = w;
             runningGame = g;
             runningSince = System.currentTimeMillis();
             long since = runningSince;
             w.addWindowListener(new java.awt.event.WindowAdapter() {
                 @Override public void windowClosed(java.awt.event.WindowEvent e) {
+                    if (w.isSwitching()) return;                // re-created to enter or leave full screen
                     SwingUtilities.invokeLater(() -> {
                         if (running == w) { running = null; runningGame = null; }
                         user.recordSession(g.path(), since, System.currentTimeMillis());

@@ -10,7 +10,7 @@ import java.util.Map;
 final class GameLauncher2 {
     private GameLauncher2() { }
 
-    static EmuWindow open(Path rom, Map<Integer, String> profiles) throws Exception {
-        return GameLauncher.open(rom, profiles, false);
+    static EmuWindow open(Path rom, Map<Integer, String> profiles, int resumeSlot) throws Exception {
+        return GameLauncher.open(rom, profiles, false, resumeSlot);
     }
 }

@@ -147,7 +147,10 @@ final class SettingsScreen extends JPanel {
         List<String> scales = new ArrayList<>();
         for (int s = Settings.MIN_SCALE; s <= Settings.MAX_SCALE; s++) scales.add("×" + s + " · " + 256 * s + "×" + 224 * s);
         p.add(chips(scales, settings.scale - Settings.MIN_SCALE, 6, i -> { settings.scale = Settings.MIN_SCALE + i; settings.save(); }));
-        JLabel hint = Widgets.label(t("set.gamehint"), Pal.ui(12, 0), Pal.TXT3);
+        p.add(Box.createVerticalStrut(12));
+        p.add(rowLabel(t("set.startmode")));
+        p.add(chips(List.of(t("set.windowed"), t("set.fullscreen")), settings.fullscreen ? 1 : 0, 2, i -> { settings.fullscreen = i == 1; settings.save(); }));
+        JLabel hint = Widgets.label("<html>" + t("set.gamehint") + "<br>" + t("set.fullscreenhint") + "</html>", Pal.ui(12, 0), Pal.TXT3);
         hint.setBorder(new EmptyBorder(8, 0, 0, 0));
         hint.setAlignmentX(LEFT_ALIGNMENT);
         p.add(hint);

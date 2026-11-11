@@ -108,4 +108,82 @@ class PpuTest {
         assertEquals(0xAB, p.read(0x39));
         assertEquals(0xCD, p.read(0x3A));
     }
+
+    // ---- hi-res and interlace
+
+    /** Mode 1 BG1 with one solid red tile at the top left, display on, BG1 on the main screen. */
+    private static Ppu redTile(int mode) {
+        Ppu p = new Ppu();
+        p.write(0x00, 0x0F); p.write(0x05, mode); p.write(0x2C, 0x01);
+        if (mode >= 5) p.write(0x2D, 0x01);           // hi-res: BG1 on the sub screen too (even dots)
+        p.write(0x07, 0x00); p.write(0x0B, 0x01);
+        vramWrite(p, 0, 0x01, 0x00);                  // map entry 0 -> char 1
+        vramWrite(p, 0x1000 + 16, 0xFF, 0x00);        // char 1 row 0: colour 1 everywhere
+        p.write(0x21, 1); p.write(0x22, 0x1F); p.write(0x22, 0x00);
+        p.write(0x0E, 0xFF); p.write(0x0E, 0x03);     // BGVOFS=-1: line 0 shows tile row 0
+        return p;
+    }
+
+    @Test void lowResFrameStaysAt256x224() {
+        Ppu p = redTile(1);
+        p.frameStart(); p.renderLine(0); p.vblankStart();
+        assertEquals(256, p.outputWidth());
+        assertEquals(224, p.outputHeight());
+        assertSame(p.frame, p.outputPixels());
+    }
+
+    @Test void mode5TilesAreSixteenDotsWideAndFrameIs512() {
+        Ppu p = redTile(5);
+        vramWrite(p, 0x1000 + 32, 0x00, 0x00);        // char 2 (the right half of the 16-dot tile): empty
+        p.frameStart(); p.renderLine(0); p.vblankStart();
+        int[] o = p.outputPixels();
+        assertEquals(512, p.outputWidth());
+        assertEquals(224, p.outputHeight());
+        for (int dot = 0; dot < 8; dot++) assertEquals(0xFFFF0000, o[dot], "dot " + dot);
+        for (int dot = 8; dot < 16; dot++) assertEquals(0xFF000000, o[dot], "dot " + dot);
+    }
+
+    @Test void mode5HorizontalScrollMovesTwoDotsPerPixel() {
+        Ppu p = redTile(5);
+        vramWrite(p, 0x1000 + 32, 0x00, 0x00);
+        p.write(0x0D, 1); p.write(0x0D, 0);           // BG1HOFS = 1 lo-res pixel = 2 dots
+        p.frameStart(); p.renderLine(0); p.vblankStart();
+        int[] o = p.outputPixels();
+        assertEquals(0xFFFF0000, o[5]);               // dots 0..5 are the tile's dots 2..7
+        assertEquals(0xFF000000, o[6]);
+    }
+
+    @Test void pseudoHiResSplitsMainAndSubScreen() {
+        Ppu p = redTile(1);
+        p.write(0x2C, 0x00); p.write(0x2D, 0x01);     // BG1 only on the sub screen
+        p.write(0x33, 0x08);                          // pseudo hi-res
+        p.frameStart(); p.renderLine(0); p.vblankStart();
+        int[] o = p.outputPixels();
+        assertEquals(512, p.outputWidth());
+        assertEquals(0xFFFF0000, o[2]);               // even dot = sub screen: red
+        assertEquals(0xFF000000, o[3]);               // odd dot = main screen: backdrop
+    }
+
+    @Test void interlaceFieldsFillAlternateRowsAndKeepTheOtherField() {
+        Ppu p = redTile(1);
+        p.write(0x33, 0x01);                          // interlace
+        p.frameStart(); p.renderLine(0); p.vblankStart();    // first frame: field 1
+        assertEquals(448, p.outputHeight());
+        assertEquals(512, p.outputWidth());
+        int[] o = p.outputPixels();
+        assertEquals(0, o[0]);                        // row 0 belongs to the other field: not drawn yet
+        assertEquals(0xFFFF0000, o[512]);             // row 1
+        p.frameStart(); p.renderLine(0); p.vblankStart();    // second frame: field 0
+        o = p.outputPixels();
+        assertEquals(0xFFFF0000, o[0]);
+        assertEquals(0xFFFF0000, o[512]);             // row 1 kept from the previous frame
+    }
+
+    @Test void stat78ReportsTheField() {
+        Ppu p = new Ppu();
+        p.frameStart();
+        int a = p.read(0x3F) >> 7;
+        p.frameStart();
+        assertEquals(1 - a, p.read(0x3F) >> 7);
+    }
 }

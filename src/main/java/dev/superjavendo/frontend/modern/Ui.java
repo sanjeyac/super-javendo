@@ -153,7 +153,14 @@ final class Ui {
         return millis <= 0 ? t("time.never").toLowerCase() : Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(DateTimeFormatter.ofPattern("d MMM", java.util.Locale.forLanguageTag(dev.superjavendo.i18n.I18n.language())));
     }
 
-    static String players(int n) { return n <= 0 ? "—" : n == 1 ? "1" : n + (n >= 2 ? "" : ""); }
+    /** No-Intro check of a dump as text: "Verified" / "Not verified" / "—" (no DAT or CRC not known yet). */
+    static String noIntro(RomCatalog.NoIntro n) {
+        return switch (n) { case VERIFIED -> t("nointro.ok"); case NOT_VERIFIED -> t("nointro.no"); case NO_DAT -> "—"; };
+    }
+
+    static Color noIntroColor(RomCatalog.NoIntro n) {
+        return switch (n) { case VERIFIED -> Pal.OK; case NOT_VERIFIED -> Pal.WARN; case NO_DAT -> Pal.TXT3; };
+    }
 
     // ------------------------------------------------------------------------------------------ widgets
 

@@ -14,8 +14,8 @@ import java.util.function.Consumer;
 /** The ROM Manager table: status, file, matched title, region, size, cover and metadata flags. Multiple selection. */
 final class RomTable extends JComponent implements Scrollable {
     private static final int ROW = 46, HEAD = 40;
-    private static final int[] FIXED = {128, 0, 0, 76, 70, 84, 84};
-    private static final String[] COLS = {"rt.status", "rt.file", "rt.match", "rt.region", "rt.size", "rt.cover", "rt.meta"};
+    private static final int[] FIXED = {128, 0, 0, 76, 70, 84, 84, 92};
+    private static final String[] COLS = {"rt.status", "rt.file", "rt.match", "rt.region", "rt.size", "rt.cover", "rt.meta", "rt.nointro"};
 
     private List<RomCatalog.Row> rows = List.of();
     private boolean metaLoaded;
@@ -154,6 +154,9 @@ final class RomTable extends JComponent implements Scrollable {
             boolean err = r.status() == RomCatalog.Status.ERROR;
             Ui.text(g2, err ? "—" : r.hasCover() ? t("yes") : t("no"), x[5], base, body, err ? Pal.TXT3 : r.hasCover() ? Pal.OK : Pal.WARN);
             Ui.text(g2, err || !metaLoaded ? "—" : r.hasMeta() ? t("yes") : t("no"), x[6], base, body, err || !metaLoaded ? Pal.TXT3 : r.hasMeta() ? Pal.OK : Pal.WARN);
+            boolean noDat = err || r.noIntro() == RomCatalog.NoIntro.NO_DAT;
+            boolean ver = r.noIntro() == RomCatalog.NoIntro.VERIFIED;
+            Ui.text(g2, noDat ? "—" : ver ? t("yes") : t("no"), x[7], base, body, noDat ? Pal.TXT3 : ver ? Pal.OK : Pal.WARN);
         }
         g2.dispose();
     }

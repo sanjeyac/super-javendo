@@ -40,6 +40,13 @@ public final class LibraryModel {
     private final UserData user;
     private final java.util.function.Predicate<Game> hasCover;
 
+    private java.util.function.Function<Game, RomCatalog.NoIntro> noIntro = g -> RomCatalog.NoIntro.NO_DAT;
+
+    /** Where the No-Intro status of a game comes from (the library data). */
+    public void setNoIntro(java.util.function.Function<Game, RomCatalog.NoIntro> f) { noIntro = f; }
+
+    public RomCatalog.NoIntro noIntro(Game g) { return noIntro.apply(g); }
+
     public LibraryModel(UserData user, java.util.function.Predicate<Game> hasCover) {
         this.user = user;
         this.hasCover = hasCover;

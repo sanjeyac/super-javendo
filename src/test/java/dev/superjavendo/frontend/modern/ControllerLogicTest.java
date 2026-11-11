@@ -75,17 +75,41 @@ class ControllerLogicTest {
         AppPaths paths = new AppPaths(tmp);
         Settings s = Settings.load(paths);
         assertEquals(3, s.scale);
-        s.language = "de"; s.filter = "nearest"; s.scale = 5; s.volume = 40;
+        s.language = "de"; s.filter = "nearest"; s.scale = 5; s.volume = 40; s.fullscreen = true;
         s.save();
         Settings r = Settings.load(paths);
         assertEquals("de", r.language);
         assertEquals("nearest", r.filter);
         assertEquals(5, r.scale);
         assertEquals(40, r.volume);
+        assertTrue(r.fullscreen);
         Files.writeString(paths.settingsFile(), "video.scale=99\naudio.volume=-5\nvideo.filter=bogus\n");
         Settings c = Settings.load(paths);
         assertEquals(Settings.MAX_SCALE, c.scale);
         assertEquals(0, c.volume);
         assertEquals("sharp", c.filter);
+    }
+
+    @Test void controllersCfgIsMergedIntoSettingsAndNothingIsLost() throws Exception {
+        AppPaths paths = new AppPaths(tmp);
+        Files.createDirectories(tmp);
+        Files.writeString(tmp.resolve("controllers.cfg"), "# old comment\nplayer1=easysmx@0\nplayer2=keyboard2\n");
+        Files.writeString(paths.settingsFile(), "language=it\nvideo.scale=4\nplayer2=xbox@1\n");   // player2 is already there: it wins
+        paths.migrateControllers();
+        assertFalse(Files.exists(tmp.resolve("controllers.cfg")));
+        assertTrue(Files.exists(tmp.resolve("controllers.cfg.old")));          // renamed, never deleted
+        var as = new ControllerAssignments(paths.controllersFile());
+        assertEquals("easysmx", as.of(1).get(0).profile());
+        assertEquals("xbox", as.of(2).get(0).profile());
+        assertEquals("it", Settings.load(paths).language);
+        // saving the settings keeps the player lines, and changing a player keeps the settings
+        Settings st = Settings.load(paths);
+        st.volume = 33; st.save();
+        assertEquals("easysmx", new ControllerAssignments(paths.controllersFile()).of(1).get(0).profile());
+        as.set(1, "keyboard", true, -1);
+        assertEquals(33, Settings.load(paths).volume);
+        assertEquals(4, Settings.load(paths).scale);
+        paths.migrateControllers();                                              // idempotent
+        assertEquals("easysmx", new ControllerAssignments(paths.controllersFile()).of(1).get(0).profile());
     }
 }

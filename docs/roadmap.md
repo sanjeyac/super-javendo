@@ -19,9 +19,9 @@ Confronto con snes9x su 164 ROM di test: 90 identiche, 13 hi-res/interlacciate d
 
 | # | Voce | Pri | Note |
 |---|------|-----|------|
-| 2.1 | Modi 5 e 6 + hi-res 512 px | P1 | 13 ROM di test li usano; l'uscita diventa 512×224/448, finestra e filtro vanno adattati |
-| 2.2 | Pseudo hi-res (SETINI bit 3) | P1 | 4 ROM HiColor64PerTileRowPseudoHiRes |
-| 2.3 | Interlacciato (SETINI bit 0/1, OBJ interlace, 448 righe) | P1 | 6 ROM Interlace |
+| 2.1 | Modi 5 e 6 + hi-res 512 px | ✅ | fatto: uscita 512×224/448, finestra e filtro adattati; le 13 ROM di test identiche a snes9x |
+| 2.2 | Pseudo hi-res (SETINI bit 3) | ✅ | fatto, 4 ROM HiColor64PerTileRowPseudoHiRes identiche |
+| 2.3 | Interlacciato (SETINI bit 0/1, OBJ interlace, 448 righe) | ✅ | fatto, 6 ROM Interlace identiche; manca la riga 263 del campo dispari |
 | 2.4 | Offset-per-tile (modi 2, 4, 6) verificato | P2 | già in modo 2/4, manca confronto con riferimento |
 | 2.5 | Mosaico completo (anche in modo 5/6 e con Mode 7) | P2 | |
 | 2.6 | EXTBG Mode 7, Mode 7 con finestre e color math | P2 | |
@@ -53,7 +53,7 @@ Ordine consigliato (vedi anche [docs/special-chip-games.md](special-chip-games.m
 | 4.5 | SA-1 | P2 | Super Mario RPG, Kirby Super Star | secondo 65816 — fatto (SMRPG, Kirby SS giocabili) |
 | 4.6 | SPC7110, ST010/011/018, S-RTC | P3 | titoli giapponesi | |
 | 4.7 | MSU-1 | P3 | homebrew; 8 ROM di test, servono i file `.msu/.pcm` | |
-| 4.8 | Multitap (giocatori 3–4), mouse, Super Scope | P2 | `controllers.cfg` accetta già `player3/4`; oggi solo porte 1 e 2 |
+| 4.8 | Multitap (giocatori 3–4), mouse, Super Scope | P2 | `settings.cfg` (righe `playerN=`) accetta già `player3/4`; oggi solo porte 1 e 2 |
 | 4.9 | Super Game Boy, BS-X | P3 | richiede un core Game Boy: fuori ambito iniziale |
 
 ## 5. Cartuccia e salvataggi

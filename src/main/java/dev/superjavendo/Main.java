@@ -172,8 +172,9 @@ public final class Main {
     }
 
     private static void save(Snes snes, String file) throws Exception {
-        BufferedImage img = new BufferedImage(Ppu.WIDTH, Ppu.HEIGHT, BufferedImage.TYPE_INT_RGB);
-        img.setRGB(0, 0, Ppu.WIDTH, Ppu.HEIGHT, snes.bus.ppu.frame, 0, Ppu.WIDTH);
+        Ppu ppu = snes.bus.ppu;
+        BufferedImage img = new BufferedImage(ppu.outputWidth(), ppu.outputHeight(), BufferedImage.TYPE_INT_RGB);
+        img.setRGB(0, 0, ppu.outputWidth(), ppu.outputHeight(), ppu.outputPixels(), 0, ppu.outputWidth());
         ImageIO.write(img, "png", new File(file));
     }
 }

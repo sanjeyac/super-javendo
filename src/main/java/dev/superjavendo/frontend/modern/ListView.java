@@ -10,20 +10,22 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-/** Table view of the library: favourite, title, year, genre, players, region, last played, play time. */
+/** Table view of the library: favourite, title, year, genre, No-Intro check, region, last played, play time. */
 final class ListView extends JComponent implements Scrollable {
     private static final int ROW = 40, HEAD = 36;
-    private static final String[] COLS = {"", "col.title", "col.year", "col.genre", "col.players", "col.region", "col.lastplayed", "col.time"};
-    private static final int[] FIXED = {40, 0, 50, 80, 100, 80, 130, 70};
+    private static final String[] COLS = {"", "col.title", "col.year", "col.genre", "col.nointro", "col.region", "col.lastplayed", "col.time"};
+    private static final int[] FIXED = {40, 0, 50, 80, 150, 80, 130, 70};
 
     private List<Game> games = List.of();
     private int selected = -1;
     private final Predicate<Game> favorite;
     private final Function<Game, Long> lastPlayed, playSeconds;
+    private final Function<Game, RomCatalog.NoIntro> noIntro;
     private Consumer<Game> onSelect = g -> { }, onActivate = g -> { }, onStar = g -> { };
 
-    ListView(Predicate<Game> favorite, Function<Game, Long> lastPlayed, Function<Game, Long> playSeconds) {
+    ListView(Predicate<Game> favorite, Function<Game, Long> lastPlayed, Function<Game, Long> playSeconds, Function<Game, RomCatalog.NoIntro> noIntro) {
         this.favorite = favorite;
+        this.noIntro = noIntro;
         this.lastPlayed = lastPlayed;
         this.playSeconds = playSeconds;
         setFocusable(true);
@@ -101,7 +103,8 @@ final class ListView extends JComponent implements Scrollable {
             FontMetrics f2 = g2.getFontMetrics(f);
             Ui.text(g2, game.year() > 0 ? String.valueOf(game.year()) : "—", x[2] + 8, base, f, Pal.TXT2);
             Ui.text(g2, Ui.ellipsize(f2, game.genre().isEmpty() ? "—" : game.genre(), x[3] - x[2] - 16), x[3] + 8, base, f, Pal.TXT2);
-            Ui.text(g2, Ui.players(game.players()), x[4] + 8, base, f, Pal.TXT2);
+            RomCatalog.NoIntro ni = this.noIntro.apply(game);
+            Ui.text(g2, Ui.ellipsize(f2, Ui.noIntro(ni), x[5] - x[4] - 16), x[4] + 8, base, f, Ui.noIntroColor(ni));
             Ui.text(g2, game.region().isEmpty() ? "—" : game.regionLabel(), x[5] + 8, base, f, Pal.TXT2);
             Ui.text(g2, Ui.lastPlayed(lastPlayed.apply(game)), x[6] + 8, base, f, Pal.TXT2);
             Ui.text(g2, Ui.playTime(playSeconds.apply(game)), x[7] + 8, base, f, Pal.TXT2);

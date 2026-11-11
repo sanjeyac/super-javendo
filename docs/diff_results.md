@@ -1,5 +1,7 @@
 # diff_results.md — SuperJavendo vs snes9x sulle ROM di test
 
+> **Nota (hi-res, ultimo run):** con modi 5/6, pseudo hi-res e interlacciato implementati le 13 ROM "risoluzione diversa" (+3 `TEST/`) sono **identiche** a snes9x; la suite completa (frame 300) dà **135/164 identiche** (prima 122). Le tabelle sotto sono del run precedente.
+
 > **Nota (SuperFX):** dopo l'implementazione del chip le 58 ROM `CHIP/GSU` girano (RAM del chip identica a snes9x; 122/164 schermate identiche nell'ultimo run completo). Le tabelle sotto sono del run precedente, prima del chip.
 
 > Aggiornato **dopo la correzione dello scarto di 1 riga** nel PPU (`y = riga + 1 + vofs`). Risultati precedenti: 15 identiche + 52 con scarto, 18 con residui.

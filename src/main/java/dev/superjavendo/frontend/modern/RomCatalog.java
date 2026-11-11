@@ -19,14 +19,18 @@ public final class RomCatalog {
     }
 
     public enum Filter {
-        TO_FIX("flt.tofix"), ALL("flt.all"), NO_COVER("flt.nocover"), DUPLICATES("flt.dup"), UNKNOWN("flt.unknown"), HIDDEN("flt.hidden");
+        TO_FIX("flt.tofix"), ALL("flt.all"), NO_COVER("flt.nocover"), DUPLICATES("flt.dup"), UNKNOWN("flt.unknown"), BAD_CRC("flt.badcrc"), HIDDEN("flt.hidden");
         private final String key;
         Filter(String key) { this.key = key; }
         public String label() { return t(key); }
     }
 
+    /** Whether the file's CRC32 is in the No-Intro DAT; NO_DAT when there is no DAT (or no CRC yet) to ask. */
+    public enum NoIntro { VERIFIED, NOT_VERIFIED, NO_DAT }
+
     /** @param main true for the file of its group the library shows; @param groupSize files of the same game (including this one) */
-    public record Row(Game game, Status status, boolean hasCover, boolean hasMeta, boolean hidden, boolean main, int groupSize) {
+    public record Row(Game game, Status status, boolean hasCover, boolean hasMeta, boolean hidden, boolean main, int groupSize,
+                      NoIntro noIntro, String noIntroName) {
         public boolean toFix() { return !hidden && status != Status.OK; }
     }
 
@@ -40,6 +44,11 @@ public final class RomCatalog {
      * @param metadataLoaded whether a metadata file with entries exists (without one nothing can be "not recognised")
      */
     public RomCatalog(List<Game> all, Overrides overrides, Predicate<Game> hasCover, boolean metadataLoaded) {
+        this(all, overrides, hasCover, metadataLoaded, null);
+    }
+
+    /** @param noIntro the No-Intro DAT, or null/empty if there is none */
+    public RomCatalog(List<Game> all, Overrides overrides, Predicate<Game> hasCover, boolean metadataLoaded, NoIntroDb noIntro) {
         this.metadataLoaded = metadataLoaded;
         Map<String, List<Game>> groups = new LinkedHashMap<>();
         for (Game g : all) groups.computeIfAbsent(g.groupKey(), k -> new ArrayList<>()).add(g);
@@ -58,7 +67,10 @@ public final class RomCatalog {
                 else if (metadataLoaded && !meta) st = Status.UNKNOWN;
                 else if (!cover) st = Status.NO_COVER;
                 else st = Status.OK;
-                out.add(new Row(g, st, cover, meta, hidden, isMain, e.getValue().size()));
+                String dat = noIntro == null || noIntro.size() == 0 ? null : noIntro.nameOf(g.crc32());
+                NoIntro ni = noIntro == null || noIntro.size() == 0 || g.crc32() == null ? NoIntro.NO_DAT
+                        : dat != null ? NoIntro.VERIFIED : NoIntro.NOT_VERIFIED;
+                out.add(new Row(g, st, cover, meta, hidden, isMain, e.getValue().size(), ni, dat));
             }
         }
         rows = out;
@@ -88,6 +100,7 @@ public final class RomCatalog {
             case NO_COVER -> !r.hidden() && !r.hasCover() && r.status() != Status.ERROR;
             case DUPLICATES -> r.groupSize() > 1;
             case UNKNOWN -> !r.hidden() && r.status() == Status.UNKNOWN;
+            case BAD_CRC -> !r.hidden() && r.noIntro() == NoIntro.NOT_VERIFIED;      // the CRC32 is not in the No-Intro DAT
             case HIDDEN -> r.hidden();
         };
     }

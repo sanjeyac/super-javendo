@@ -38,10 +38,11 @@ public final class EmuWindow extends JFrame {
      * (keeps pixel edges crisp), so the final bilinear step only has to smooth a fractional remainder.
      */
     private BufferedImage prescaled(int targetWidth) {
-        int k = Math.max(1, (int) Math.ceil(targetWidth / (double) Ppu.WIDTH));
+        BufferedImage image = this.image;
+        int k = Math.max(1, (int) Math.ceil(targetWidth / (double) image.getWidth()));
         if (k == 1) return image;
-        if (prescaleBuf == null || prescaleK != k) {
-            prescaleBuf = new BufferedImage(Ppu.WIDTH * k, Ppu.HEIGHT * k, BufferedImage.TYPE_INT_RGB);
+        if (prescaleBuf == null || prescaleK != k || prescaleBuf.getWidth() != image.getWidth() * k || prescaleBuf.getHeight() != image.getHeight() * k) {
+            prescaleBuf = new BufferedImage(image.getWidth() * k, image.getHeight() * k, BufferedImage.TYPE_INT_RGB);
             prescaleK = k;
         }
         Graphics2D pg = prescaleBuf.createGraphics();
@@ -56,7 +57,8 @@ public final class EmuWindow extends JFrame {
     private volatile int stateRequest; // 0 none, 1 save, 2 load
     private volatile String toast = "";
     private volatile long toastUntil;
-    private final BufferedImage image = new BufferedImage(Ppu.WIDTH, Ppu.HEIGHT, BufferedImage.TYPE_INT_RGB);
+    /** The frame being shown. Hi-res and interlaced frames are bigger (512 wide, up to 448 rows): the image is replaced when the size changes. */
+    private volatile BufferedImage image = new BufferedImage(Ppu.WIDTH, Ppu.HEIGHT, BufferedImage.TYPE_INT_RGB);
     private final AudioOut audio = new AudioOut();
     private final ControllerPorts ports = new ControllerPorts();
     private volatile boolean running = true, paused;
@@ -83,7 +85,7 @@ public final class EmuWindow extends JFrame {
                 double aspect = 256.0 / 224.0;
                 int dw = w, dh = (int) (w / aspect);
                 if (dh > h) { dh = h; dw = (int) (h * aspect); }
-                BufferedImage src = image;
+                BufferedImage src = image;       // always shown at 4:3 of the 256x224 picture, whatever its resolution
                 Object hint = RenderingHints.VALUE_INTERPOLATION_BILINEAR;
                 if (filter == Filter.NEAREST) hint = RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR;
                 else if (filter == Filter.SHARP) src = prescaled(dw);
@@ -104,6 +106,8 @@ public final class EmuWindow extends JFrame {
         panel.setPreferredSize(new Dimension(Ppu.WIDTH * settings.scale, Ppu.HEIGHT * settings.scale));
         panel.setBackground(Color.BLACK);
         setContentPane(panel);
+        fullscreen = settings.fullscreen;
+        if (fullscreen) setUndecorated(true);                  // must be decided before the window is displayable
         pack();
         setLocationRelativeTo(null);
         setDefaultCloseOperation(exitOnClose ? EXIT_ON_CLOSE : DISPOSE_ON_CLOSE);
@@ -117,22 +121,67 @@ public final class EmuWindow extends JFrame {
                     filter = Filter.values()[(filter.ordinal() + 1) % Filter.values().length];
                     show(I18n.t("game.filter", filter.label()));
                 } else if (e.getKeyCode() == KeyEvent.VK_P) paused = !paused;
-                else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) dispose();
+                else if (e.getKeyCode() == KeyEvent.VK_F11) setFullscreen(!fullscreen);
+                else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) { if (fullscreen) setFullscreen(false); else dispose(); }
             }
             @Override public void keyReleased(KeyEvent e) {
                 ports.onKey(e.getKeyCode(), false);
             }
         });
         addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override public void windowClosing(java.awt.event.WindowEvent e) { shutdown(); }
-            @Override public void windowClosed(java.awt.event.WindowEvent e) { shutdown(); }
+            @Override public void windowClosing(java.awt.event.WindowEvent e) { if (!switching) shutdown(); }
+            @Override public void windowClosed(java.awt.event.WindowEvent e) { if (!switching) shutdown(); }
         });
         setVisible(true);
+        if (fullscreen) enterFullscreenDevice();
         requestFocus();
         Thread t = new Thread(this::loop, "emulation");
         t.setDaemon(true);
         t.start();
     }
+
+    private boolean fullscreen;
+    private volatile boolean switching;
+
+    /** True while the window is being re-created to enter or leave full screen: its close events are not a real close. */
+    public boolean isSwitching() { return switching; }
+
+    private static final Cursor BLANK_CURSOR = Toolkit.getDefaultToolkit().createCustomCursor(
+            new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB), new Point(0, 0), "blank");
+
+    private void enterFullscreenDevice() {
+        GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().setFullScreenWindow(this);
+        getContentPane().setCursor(BLANK_CURSOR);
+        requestFocus();
+    }
+
+    /** Enters or leaves full screen (event thread). The window must be re-created because decorations cannot change while displayed. */
+    public void setFullscreen(boolean on) {
+        if (on == fullscreen) return;
+        GraphicsDevice dev = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+        switching = true;
+        if (on) {
+            dispose();
+            setUndecorated(true);
+            fullscreen = true;
+            setVisible(true);
+            enterFullscreenDevice();
+        } else {
+            dev.setFullScreenWindow(null);
+            dispose();
+            setUndecorated(false);
+            fullscreen = false;
+            getContentPane().setCursor(Cursor.getDefaultCursor());
+            pack();
+            setLocationRelativeTo(null);
+            setVisible(true);
+            requestFocus();
+        }
+        SwingUtilities.invokeLater(() -> switching = false);   // the close event of the old window is queued before this
+    }
+
+    /** Loads a save state (0 = quick slot) on the emulation thread, as if the load key had been pressed. */
+    public void requestLoadSlot(int slot) { stateRequest = (slot << 2) | 2; }
 
     /** Power-cycles the console (battery RAM is kept). Applied on the emulation thread. */
     public void requestReset() { resetRequest = true; }
@@ -146,7 +195,6 @@ public final class EmuWindow extends JFrame {
     }
 
     private void loop() {
-        int[] target = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
         long next = System.nanoTime();
         int fps = 0;
         long fpsT = System.nanoTime();
@@ -163,11 +211,11 @@ public final class EmuWindow extends JFrame {
             if ((rising & ControllerInput.SAVE_STATE) != 0) stateRequest = 1;       // slot 0
             else if ((rising & ControllerInput.LOAD_STATE) != 0) stateRequest = 2;
             int req = stateRequest;
-            if (req != 0) { stateRequest = 0; handleState(req, target); }
+            if (req != 0) { stateRequest = 0; handleState(req); }
             if (paused) { sleep(20); next = System.nanoTime(); SwingUtilities.invokeLater(this::repaint); continue; }
             ports.apply(snes.joypad);
             snes.runFrame();
-            System.arraycopy(snes.bus.ppu.frame, 0, target, 0, target.length);
+            present();
             audio.flush();
             SwingUtilities.invokeLater(this::repaint);
             fps++;
@@ -191,7 +239,19 @@ public final class EmuWindow extends JFrame {
     }
 
     /** Runs on the emulation thread between frames, so the console state is consistent. */
-    private void handleState(int request, int[] target) {
+    /** Copies the last completed frame of the console into the image the panel draws. */
+    private void present() {
+        var ppu = snes.bus.ppu;
+        int w = ppu.outputWidth(), h = ppu.outputHeight();
+        BufferedImage img = image;
+        if (img.getWidth() != w || img.getHeight() != h) {
+            img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+            System.arraycopy(ppu.outputPixels(), 0, ((DataBufferInt) img.getRaster().getDataBuffer()).getData(), 0, w * h);
+            image = img;
+        } else System.arraycopy(ppu.outputPixels(), 0, ((DataBufferInt) img.getRaster().getDataBuffer()).getData(), 0, w * h);
+    }
+
+    private void handleState(int request) {
         int req = request & 3, slot = request >> 2;
         Path stateFile = stateFiles.apply(slot);
         String tag = " (" + I18n.t("game.slot", slot) + ")";
@@ -208,7 +268,7 @@ public final class EmuWindow extends JFrame {
                 if (!java.nio.file.Files.exists(stateFile)) { show(I18n.t("game.nostate") + tag); return; }
                 byte[] data = java.nio.file.Files.readAllBytes(stateFile);
                 snes.loadState(data);
-                System.arraycopy(snes.bus.ppu.frame, 0, target, 0, target.length);
+                present();
                 long at = Snes.readInfo(data).savedAtMillis;
                 show(at == 0 ? I18n.t("game.loaded") + tag : I18n.t("game.loaded") + tag + " (" + I18n.t("game.savedat") + " "
                         + java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(at), java.time.ZoneId.systemDefault())

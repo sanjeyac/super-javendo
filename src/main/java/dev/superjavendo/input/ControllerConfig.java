@@ -11,7 +11,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Wires controller profiles to players. Reads <code>~/.config/superjavendo/controllers.cfg</code>:
+ * Wires controller profiles to players. Reads the {@code playerN=} lines of <code>~/.config/superjavendo/settings.cfg</code>
+ * (they used to be in {@code controllers.cfg}, see {@link AppPaths#migrateControllers()}):
  * <pre>
  * player1=keyboard,easysmx@0     # profile names (joystick/&lt;name&gt;.cfg); "@N" picks /dev/input/jsN
  * player2=xbox@1
@@ -45,7 +46,14 @@ public final class ControllerConfig {
         Path cfg = paths.controllersFile();
         try {
             store.installDefaults();
+            paths.migrateControllers();
             if (!Files.exists(cfg)) Files.write(cfg, DEFAULT.getBytes(StandardCharsets.UTF_8));
+            else if (Files.readAllLines(cfg, StandardCharsets.UTF_8).stream().noneMatch(l -> l.trim().startsWith("player1="))) {
+                List<String> l = new ArrayList<>(Files.readAllLines(cfg, StandardCharsets.UTF_8));      // settings.cfg without players yet
+                l.add("");
+                l.addAll(List.of(DEFAULT.split("\n")));
+                Files.write(cfg, l, StandardCharsets.UTF_8);
+            }
         } catch (IOException e) {
             System.err.println("Cannot write controller config in " + paths.configDir() + ": " + e.getMessage());
         }
