@@ -20,8 +20,8 @@ class LibraryTest {
 
     @Test void regionAndTitleFromDumpTags() {
         assertEquals("USA", Game.regionOf("Super Metroid (U) [!].sfc"));
-        assertEquals("Europa", Game.regionOf("Foo (Europe).sfc"));
-        assertEquals("Giappone", Game.regionOf("Foo (J).sfc"));
+        assertEquals("EUR", Game.regionOf("Foo (Europe).sfc"));
+        assertEquals("JPN", Game.regionOf("Foo (J).sfc"));
         assertEquals("", Game.regionOf("Foo.sfc"));
         assertEquals("Super Metroid", Game.cleanTitle("Super Metroid (U) [!]"));
     }

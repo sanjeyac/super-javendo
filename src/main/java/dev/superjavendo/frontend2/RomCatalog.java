@@ -1,5 +1,7 @@
 package dev.superjavendo.frontend2;
 
+import static dev.superjavendo.i18n.I18n.t;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,15 +12,17 @@ import java.util.function.Predicate;
 /** What the ROM Manager shows: one row per ROM file with its status, plus the counters and filters. No UI here. */
 public final class RomCatalog {
     public enum Status {
-        OK("OK"), DUPLICATE("Duplicato"), NO_COVER("No copertina"), UNKNOWN("Non riconosciuta"), ERROR("Errore");
-        public final String label;
-        Status(String label) { this.label = label; }
+        OK("st.ok"), DUPLICATE("st.dup"), NO_COVER("st.nocover"), UNKNOWN("st.unknown"), ERROR("st.error");
+        private final String key;
+        Status(String key) { this.key = key; }
+        public String label() { return t(key); }
     }
 
     public enum Filter {
-        TO_FIX("Da sistemare"), ALL("Tutte"), NO_COVER("Senza copertina"), DUPLICATES("Duplicati"), UNKNOWN("Non riconosciute"), HIDDEN("Nascoste");
-        public final String label;
-        Filter(String label) { this.label = label; }
+        TO_FIX("flt.tofix"), ALL("flt.all"), NO_COVER("flt.nocover"), DUPLICATES("flt.dup"), UNKNOWN("flt.unknown"), HIDDEN("flt.hidden");
+        private final String key;
+        Filter(String key) { this.key = key; }
+        public String label() { return t(key); }
     }
 
     /** @param main true for the file of its group the library shows; @param groupSize files of the same game (including this one) */

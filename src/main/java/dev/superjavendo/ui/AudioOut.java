@@ -13,6 +13,10 @@ public final class AudioOut implements Apu.Sink {
     private double pos;
     private int prevL, prevR;
     private byte[] outBuf = new byte[0];
+    private volatile int volume = 100;
+
+    /** 0..100. */
+    public void setVolume(int percent) { volume = Math.max(0, Math.min(100, percent)); }
 
     public AudioOut() {
         try {
@@ -49,7 +53,7 @@ public final class AudioOut implements Apu.Sink {
             double f = pos - i;
             int l0 = i < 0 ? prevL : in[i * 2], r0 = i < 0 ? prevR : in[i * 2 + 1];
             int l1 = in[(i + 1) * 2], r1 = in[(i + 1) * 2 + 1];
-            int l = (int) (l0 + (l1 - l0) * f), r = (int) (r0 + (r1 - r0) * f);
+            int l = (int) (l0 + (l1 - l0) * f) * volume / 100, r = (int) (r0 + (r1 - r0) * f) * volume / 100;
             outBuf[n++] = (byte) l; outBuf[n++] = (byte) (l >> 8);
             outBuf[n++] = (byte) r; outBuf[n++] = (byte) (r >> 8);
             pos += step;

@@ -1,5 +1,7 @@
 package dev.superjavendo.frontend2;
 
+import static dev.superjavendo.i18n.I18n.t;
+
 import dev.superjavendo.frontend.GameEntry;
 import dev.superjavendo.frontend.Previews;
 
@@ -24,8 +26,8 @@ public record Game(GameEntry entry, String title, String publisher, int year, St
         while (m.find()) {
             String t = m.group(1).trim().toLowerCase(Locale.ROOT);
             if (t.equals("u") || t.startsWith("usa") || t.equals("us")) return "USA";
-            if (t.equals("e") || t.startsWith("europe") || t.equals("eur")) return "Europa";
-            if (t.equals("j") || t.startsWith("japan")) return "Giappone";
+            if (t.equals("e") || t.startsWith("europe") || t.equals("eur")) return "EUR";
+            if (t.equals("j") || t.startsWith("japan")) return "JPN";
         }
         return "";
     }
@@ -61,6 +63,14 @@ public record Game(GameEntry entry, String title, String publisher, int year, St
         return m.find() ? m.group(1) : "";
     }
 
+    /** The region as shown to the user: "USA", or the translated Europe / Japan; other text (from games.tsv) is shown as it is. */
+    public String regionLabel() {
+        String r = region.toLowerCase(java.util.Locale.ROOT);
+        if (r.equals("eur") || r.equals("europe") || r.equals("europa")) return t("region.eur");
+        if (r.equals("jpn") || r.equals("japan") || r.equals("giappone")) return t("region.jpn");
+        return region;
+    }
+
     public Game withVersions(int n) {
         return new Game(entry, title, publisher, year, genre, players, region, crc32, size, n, groupKey);
     }
@@ -70,7 +80,7 @@ public record Game(GameEntry entry, String title, String publisher, int year, St
         StringBuilder sb = new StringBuilder();
         if (year > 0) sb.append(year);
         if (!genre.isEmpty()) sb.append(sb.length() > 0 ? " · " : "").append(genre);
-        if (!region.isEmpty()) sb.append(sb.length() > 0 ? " · " : "").append(region);
+        if (!region.isEmpty()) sb.append(sb.length() > 0 ? " · " : "").append(regionLabel());
         return sb.length() == 0 ? "—" : sb.toString();
     }
 }

@@ -1,7 +1,7 @@
 # CLAUDE.md — guida per continuare lo sviluppo
 
 Emulatore SNES in Java (`superjavendo`). Scopo del progetto e stato: vedi `README.md`.
-L'utente scrive in italiano; rispondi in italiano. Codice e commenti in inglese.
+L'utente scrive in italiano; rispondi in italiano. Codice e commenti in inglese. Testi dell'interfaccia v2: sempre via `I18n` (vedi sotto).
 
 ## Comandi
 
@@ -23,7 +23,7 @@ Per verificare la grafica senza toccare il desktop dell'utente: `--headless` + s
   (formato `.cfg`), `ControllerConfig` (assegnazione profili → giocatori, `controllers.cfg`, override `-p1/-p2`).
 - `ui/EmuWindow` (loop di emulazione, hotkey, reset), `ui/AudioOut`.
 - `frontend/`: `LauncherWindow`, `ControllerConfigWindow`, `PadView`, `GameList`, `Previews`, `GameLauncher`.
-- `frontend2/`: frontend v2 (definitivo, accanto alla v1 che resta intatta): `Shell` (finestra a tab), `LibraryScreen`/`GridView`/`ListView`/`DetailPanel`, `LibraryModel` (logica senza UI), `UserData` (`library-user.tsv`), `MetaDb` (`games.tsv` per CRC32), `Pal`/`Ui`/`Widgets` (disegno custom). Piano e milestone: `docs/frontend-v2-plan.md`. Senza ROM parte la v2 (default); `--ui-legacy` avvia la v1; screenshot headless `--ui2-shot out.png W H tab [list] [query]`. M1 (Libreria) e M2 (ROM Manager: `LibraryData`, `RomCatalog`, `Overrides`, `Sources`, `RomTable`, `RomDetail`, `RomManagerScreen`) fatte; Controller/Impostazioni sono segnaposto. Per `--ui2-shot ... rom grid "testo"` il testo apre il ROM Manager sul primo file che lo contiene.
+- `frontend2/`: frontend v2 (definitivo, accanto alla v1 che resta intatta): `Shell` (finestra a tab), `LibraryScreen`/`GridView`/`ListView`/`DetailPanel`, `LibraryModel` (logica senza UI), `UserData` (`library-user.tsv`), `MetaDb` (`games.tsv` per CRC32), `Pal`/`Ui`/`Widgets` (disegno custom). Piano e milestone: `docs/frontend-v2-plan.md`. Senza ROM parte la v2 (default); `--ui-legacy` avvia la v1; screenshot headless `--ui2-shot out.png W H tab [list] [query]`. M1 (Libreria) e M2 (ROM Manager: `LibraryData`, `RomCatalog`, `Overrides`, `Sources`, `RomTable`, `RomDetail`, `RomManagerScreen`) fatte; M3 (Controller: `ControllerScreen`, `PadCanvas`, `ProfileEditor`; logica in `input/ProfileLibrary`, `ControllerAssignments`, `GamepadMonitor`) e Impostazioni (`SettingsScreen`, `config/Settings` → `settings.cfg`, applicate da `EmuWindow`) fatte. **i18n**: `i18n/I18n.t("chiave", args)`, bundle in `src/main/resources/i18n/` (en radice + it es fr de pt nl pl); ogni testo visibile della v2 passa da lì, mai stringhe letterali; `I18nTest` impone le stesse chiavi in tutte le lingue. Per `--ui2-shot ... rom grid "testo"` il testo apre il ROM Manager sul primo file che lo contiene.
 - `config/AppPaths`: tutto sotto `~/.config/superjavendo/` (o `$XDG_CONFIG_HOME`).
 - Profili di default: `src/main/resources/profiles/*.cfg` (copiati in config solo se mancano; **mai sovrascrivere i file dell'utente**).
 

@@ -14,11 +14,11 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import dev.superjavendo.i18n.I18n;
 import java.nio.file.Path;
 
 /** Swing front-end: video, keyboard input, audio, 60 fps pacing. */
 public final class EmuWindow extends JFrame {
-    private static final int SCALE = 3;
     private static final double FRAME_NANOS = 1e9 / 60.0988;
 
     private volatile Snes snes;
@@ -26,9 +26,8 @@ public final class EmuWindow extends JFrame {
 
     /** How the 256x224 frame is scaled to the window; F cycles through them. */
     private enum Filter {
-        NEAREST("Pixel esatti (nearest)"), SHARP("Bilineare nitido (default)"), SMOOTH("Bilineare morbido");
-        final String label;
-        Filter(String l) { label = l; }
+        NEAREST, SHARP, SMOOTH;
+        String label() { return dev.superjavendo.i18n.I18n.t("game.filter." + name().toLowerCase()); }
     }
     private volatile Filter filter = Filter.SHARP;
     private BufferedImage prescaleBuf;
@@ -68,6 +67,10 @@ public final class EmuWindow extends JFrame {
         this.snes = snes;
         this.sramFile = sramFile;
         this.stateFiles = stateFiles;
+        dev.superjavendo.config.Settings settings = dev.superjavendo.config.Settings.load(AppPaths.forCurrentUser());
+        dev.superjavendo.i18n.I18n.set(settings.language);
+        filter = Filter.valueOf(settings.filter.toUpperCase());
+        audio.setVolume(settings.volume);
         snes.bus.apu.setSink(audio);
         // Profiles and player assignments live in ~/.config/superjavendo (joystick/*.cfg, controllers.cfg).
         ControllerConfig.configure(ports, new ControllerFactory(), AppPaths.forCurrentUser(), profileOverrides);
@@ -98,7 +101,7 @@ public final class EmuWindow extends JFrame {
                 }
             }
         };
-        panel.setPreferredSize(new Dimension(Ppu.WIDTH * SCALE, Ppu.HEIGHT * SCALE));
+        panel.setPreferredSize(new Dimension(Ppu.WIDTH * settings.scale, Ppu.HEIGHT * settings.scale));
         panel.setBackground(Color.BLACK);
         setContentPane(panel);
         pack();
@@ -112,7 +115,7 @@ public final class EmuWindow extends JFrame {
                 if (ports.onKey(e.getKeyCode(), true)) return;
                 if (e.getKeyCode() == KeyEvent.VK_F) {
                     filter = Filter.values()[(filter.ordinal() + 1) % Filter.values().length];
-                    show("Filtro: " + filter.label);
+                    show(I18n.t("game.filter", filter.label()));
                 } else if (e.getKeyCode() == KeyEvent.VK_P) paused = !paused;
                 else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) dispose();
             }
@@ -153,7 +156,7 @@ public final class EmuWindow extends JFrame {
                 Snes fresh = new Snes(snes.cart);
                 fresh.bus.apu.setSink(audio);
                 snes = fresh;
-                show("Reset");
+                show(I18n.t("game.reset"));
             }
             int act = ports.actions(), rising = act & ~prevActions;
             prevActions = act;
@@ -191,7 +194,7 @@ public final class EmuWindow extends JFrame {
     private void handleState(int request, int[] target) {
         int req = request & 3, slot = request >> 2;
         Path stateFile = stateFiles.apply(slot);
-        String tag = " (slot " + slot + ")";
+        String tag = " (" + I18n.t("game.slot", slot) + ")";
         try {
             if (req == 1) {
                 byte[] data = snes.saveState();
@@ -200,19 +203,19 @@ public final class EmuWindow extends JFrame {
                 java.nio.file.Files.write(tmp, data);
                 java.nio.file.Files.move(tmp, stateFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
                         java.nio.file.StandardCopyOption.ATOMIC_MOVE);
-                show("State saved" + tag);
+                show(I18n.t("game.saved") + tag);
             } else {
-                if (!java.nio.file.Files.exists(stateFile)) { show("No saved state" + tag); return; }
+                if (!java.nio.file.Files.exists(stateFile)) { show(I18n.t("game.nostate") + tag); return; }
                 byte[] data = java.nio.file.Files.readAllBytes(stateFile);
                 snes.loadState(data);
                 System.arraycopy(snes.bus.ppu.frame, 0, target, 0, target.length);
                 long at = Snes.readInfo(data).savedAtMillis;
-                show(at == 0 ? "State loaded" + tag : "State loaded" + tag + " (saved "
+                show(at == 0 ? I18n.t("game.loaded") + tag : I18n.t("game.loaded") + tag + " (" + I18n.t("game.savedat") + " "
                         + java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(at), java.time.ZoneId.systemDefault())
                                 .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM HH:mm")) + ")");
             }
         } catch (Exception ex) {
-            show((req == 1 ? "Save failed: " : "Load failed: ") + ex.getMessage());
+            show(I18n.t(req == 1 ? "game.savefail" : "game.loadfail", ex.getMessage()));
         }
     }
 

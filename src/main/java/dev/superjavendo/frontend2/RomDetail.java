@@ -1,5 +1,7 @@
 package dev.superjavendo.frontend2;
 
+import static dev.superjavendo.i18n.I18n.t;
+
 import dev.superjavendo.config.AppPaths;
 
 import javax.swing.*;
@@ -24,16 +26,7 @@ final class RomDetail extends JPanel {
     private final Covers covers;
     private final AppPaths paths;
     private final Actions actions;
-    private final JPanel body = new Body();
-
-    /** A panel that follows the width of the scroll pane, so nothing is cut on the right. */
-    private static final class Body extends JPanel implements Scrollable {
-        @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
-        @Override public int getScrollableUnitIncrement(Rectangle r, int o, int d) { return 24; }
-        @Override public int getScrollableBlockIncrement(Rectangle r, int o, int d) { return r.height - 24; }
-        @Override public boolean getScrollableTracksViewportWidth() { return true; }
-        @Override public boolean getScrollableTracksViewportHeight() { return false; }
-    }
+    private final JPanel body = new Widgets.Body();
     private final JPanel foot = new JPanel();
 
     RomDetail(Covers covers, AppPaths paths, Actions actions) {
@@ -85,13 +78,13 @@ final class RomDetail extends JPanel {
         body.removeAll();
         foot.removeAll();
         if (selection.isEmpty()) {
-            body.add(caption("File"));
-            body.add(text("Seleziona un file nella tabella.", Pal.ui(14, 0), Pal.TXT2));
+            body.add(caption(t("rd.file")));
+            body.add(text(t("rd.select"), Pal.ui(14, 0), Pal.TXT2));
         } else if (selection.size() > 1) {
-            body.add(caption("Selezione"));
-            body.add(text(selection.size() + " file", Pal.title(24), Pal.TXT));
+            body.add(caption(t("rd.selection")));
+            body.add(text(t("rd.nfiles", selection.size()), Pal.title(24), Pal.TXT));
             gap(8);
-            body.add(text("Usa i pulsanti sotto la tabella per agire su tutti i file selezionati.", Pal.ui(14, 0), Pal.TXT2));
+            body.add(text(t("rd.multihint"), Pal.ui(14, 0), Pal.TXT2));
         } else {
             single(selection.get(0), cat);
         }
@@ -104,10 +97,10 @@ final class RomDetail extends JPanel {
         Game g = r.game();
         List<RomCatalog.Row> group = cat.group(g);
         boolean multi = group.size() > 1;
-        body.add(caption(multi ? "Gruppo" : "File"));
-        body.add(text(g.title() + (multi ? " · " + group.size() + " file" : ""), Pal.title(24), Pal.TXT));
+        body.add(caption(multi ? t("rd.group") : t("rd.file")));
+        body.add(text(g.title() + (multi ? " · " + t("rd.nfiles", group.size()) : ""), Pal.title(24), Pal.TXT));
         gap(6);
-        body.add(text(multi ? "Nella libreria compare un solo gioco. Scegli quale file usare." : g.fileName(), Pal.ui(14, 0), Pal.TXT2));
+        body.add(text(multi ? t("rd.grouphint") : g.fileName(), Pal.ui(14, 0), Pal.TXT2));
         gap(14);
         for (RomCatalog.Row o : group) {
             body.add(new FileOption(o, o.main(), o.game().path().equals(g.path()), states(o.game().path()), multi));
@@ -115,14 +108,14 @@ final class RomDetail extends JPanel {
         }
         gap(8);
 
-        body.add(caption("Copertina"));
+        body.add(caption(t("rd.cover")));
         gap(6);
         body.add(coverRow(g));
         gap(18);
 
-        body.add(caption("Abbinamento metadati"));
+        body.add(caption(t("rd.metamatch")));
         gap(6);
-        body.add(text(cat.metadataLoaded() ? "Riga in games.tsv" : "Nessun games.tsv nella cartella di configurazione", Pal.ui(13, 0), Pal.TXT2));
+        body.add(text(cat.metadataLoaded() ? t("rd.metarow") : t("rd.nometafile"), Pal.ui(13, 0), Pal.TXT2));
         gap(6);
         body.add(metaBox(r, cat.metadataLoaded()));
 
@@ -131,11 +124,11 @@ final class RomDetail extends JPanel {
         if (multi && r.main()) for (RomCatalog.Row o : group) if (!o.main() && !o.hidden()) { target = o; break; }
         final Game tg = target.game();
         final boolean hid = target.hidden();
-        String hideText = hid ? "Mostra nella libreria" : multi && !target.main() ? "Nascondi il duplicato" : "Nascondi dalla libreria";
+        String hideText = hid ? t("act.show") : multi && !target.main() ? t("act.hidedup") : t("act.hide");
         foot.add(button(hideText, Pal.ACCENT, Color.WHITE, null, () -> actions.hide(List.of(tg), !hid)));
         foot.add(Box.createVerticalStrut(8));
         String tag = tg.badTag();
-        String trashText = "Sposta " + (multi ? (tag.isEmpty() ? "il duplicato" : "[" + tag + "]") : "il file") + " nel cestino…";
+        String trashText = multi ? (tag.isEmpty() ? t("act.trashdup") : t("act.trashtag", tag)) : t("act.trash");
         foot.add(button(trashText, null, Pal.ERR, new Color(0x6a3340), () -> actions.trash(tg)));
     }
 
@@ -182,13 +175,13 @@ final class RomDetail extends JPanel {
             String crc = row.game().crc32() == null ? "" : " · CRC " + row.game().crc32();
             String q; Color qc;
             switch (row.game().quality()) {
-                case VERIFIED -> { q = "Dump verificato" + crc; qc = Pal.OK; }
-                case BAD -> { q = "Dump difettoso [" + row.game().badTag() + "]"; qc = Pal.ERR; }
-                default -> { q = "Dump non verificato" + crc; qc = Pal.TXT2; }
+                case VERIFIED -> { q = t("dump.good") + crc; qc = Pal.OK; }
+                case BAD -> { q = t("dump.bad") + " [" + row.game().badTag() + "]"; qc = Pal.ERR; }
+                default -> { q = t("dump.unknown") + crc; qc = Pal.TXT2; }
             }
             Font f = Pal.ui(13, 0);
             Ui.text(g2, Ui.ellipsize(g2.getFontMetrics(f), q, getWidth() - x - 12), x, 50, f, qc);
-            String st = (group && main ? "File principale · " : row.hidden() ? "Nascosto · " : "") + (states == 0 ? "Nessun save state" : states + (states == 1 ? " save state" : " save state"));
+            String st = (group && main ? t("rd.mainfile") + " · " : row.hidden() ? t("rd.hiddenfile") + " · " : "") + (states == 0 ? t("detail.nostate") : t(states == 1 ? "rd.states1" : "rd.statesn", states));
             Ui.text(g2, st, x, 70, f, Pal.TXT2);
             g2.dispose();
         }
@@ -215,12 +208,12 @@ final class RomDetail extends JPanel {
         side.setOpaque(false);
         side.setLayout(new BoxLayout(side, BoxLayout.Y_AXIS));
         Path f = covers.coverFile(g.path());
-        JLabel name = Widgets.label(f == null ? "Nessuna copertina" : f.getFileName().toString(), Pal.mono(12), f == null ? Pal.WARN : Pal.TXT);
+        JLabel name = Widgets.label(f == null ? t("rd.nocover") : f.getFileName().toString(), Pal.mono(12), f == null ? Pal.WARN : Pal.TXT);
         name.setAlignmentX(LEFT_ALIGNMENT);
         side.add(Box.createVerticalGlue());
         side.add(name);
         side.add(Box.createVerticalStrut(6));
-        JLabel link = Widgets.label("<html><u>" + (f == null ? "Scegli immagine…" : "Cambia immagine…") + "</u></html>", Pal.ui(13, 0), Pal.ACCENT_L);
+        JLabel link = Widgets.label("<html><u>" + (f == null ? t("rd.pickimage") : t("rd.changeimage")) + "</u></html>", Pal.ui(13, 0), Pal.ACCENT_L);
         link.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         link.setAlignmentX(LEFT_ALIGNMENT);
         link.addMouseListener(new MouseAdapter() { @Override public void mousePressed(MouseEvent e) { actions.changeCover(g); } });
@@ -241,7 +234,7 @@ final class RomDetail extends JPanel {
             if (!g.genre().isEmpty()) parts.add(g.genre());
             s = String.join(" · ", parts);
         } else if (!loaded) s = "—";
-        else s = g.crc32() == null ? "CRC32 non ancora calcolato" : "Nessuna corrispondenza per CRC32 " + g.crc32();
+        else s = g.crc32() == null ? t("rd.crcwait") : t("rd.nomatch", g.crc32());
         final String shown = s;
         JLabel l = new JLabel(W.replace("270", "240") + shown.replace("&", "&amp;").replace("<", "&lt;") + "</body></html>") {
             @Override protected void paintComponent(Graphics gg) {

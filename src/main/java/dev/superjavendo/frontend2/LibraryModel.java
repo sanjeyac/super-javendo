@@ -1,5 +1,7 @@
 package dev.superjavendo.frontend2;
 
+import static dev.superjavendo.i18n.I18n.t;
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -14,15 +16,17 @@ import java.util.TreeMap;
  * Games that are different versions of the same title are folded into one entry (the first file found).
  */
 public final class LibraryModel {
-    public enum Collection { ALL("Tutti i giochi"), RECENT("Giocati di recente"), FAVORITES("Preferiti"), NO_COVER("Senza copertina");
-        public final String label;
-        Collection(String l) { label = l; }
+    public enum Collection { ALL("coll.all"), RECENT("coll.recent"), FAVORITES("coll.fav"), NO_COVER("coll.nocover");
+        private final String key;
+        Collection(String k) { key = k; }
+        public String label() { return t(key); }
     }
 
-    public enum Sort { TITLE("Titolo A–Z"), RECENT("Giocati di recente"), YEAR("Anno di uscita");
-        public final String label;
-        Sort(String l) { label = l; }
-        @Override public String toString() { return label; }
+    public enum Sort { TITLE("sort.title"), RECENT("sort.recent"), YEAR("sort.year");
+        private final String key;
+        Sort(String k) { key = k; }
+        public String label() { return t(key); }
+        @Override public String toString() { return label(); }
     }
 
     /** Players filter: 0 = all, 1 = single player, 2 = two or more. */

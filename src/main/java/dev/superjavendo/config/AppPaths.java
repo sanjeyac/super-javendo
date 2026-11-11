@@ -38,6 +38,9 @@ public final class AppPaths {
     /** Per-game user data of the v2 frontend (favourites, last played, play time). */
     public Path userDataFile() { return configDir.resolve("library-user.tsv"); }
 
+    /** Application settings (language, video, audio). */
+    public Path settingsFile() { return configDir.resolve("settings.cfg"); }
+
     /** ROM folders the library is built from (path, last scan, file count). */
     public Path sourcesFile() { return configDir.resolve("sources.tsv"); }
 

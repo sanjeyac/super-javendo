@@ -1,5 +1,7 @@
 package dev.superjavendo.frontend2;
 
+import static dev.superjavendo.i18n.I18n.t;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -19,16 +21,16 @@ final class RomManagerScreen extends JPanel {
 
     private final JPanel folders = new JPanel();
     private final JLabel metaInfo = Widgets.label("", Pal.ui(12, 0), Pal.TXT3);
-    private final Ui.Btn scanBtn = new Ui.Btn("Scansiona di nuovo", Pal.ACCENT, Color.WHITE, null);
-    private final Ui.Btn metaBtn = new Ui.Btn("Aggiorna metadati", Pal.CARD, Pal.TXT, Pal.CARD_LINE);
+    private final Ui.Btn scanBtn = new Ui.Btn(t("rm.rescan"), Pal.ACCENT, Color.WHITE, null);
+    private final Ui.Btn metaBtn = new Ui.Btn(t("rm.updmeta"), Pal.CARD, Pal.TXT, Pal.CARD_LINE);
     private final Counters counters = new Counters();
     private final JPanel tabRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 4));
     private final Map<RomCatalog.Filter, Ui.Btn> tabs = new EnumMap<>(RomCatalog.Filter.class);
-    private final Widgets.Search search = new Widgets.Search("Nome file, titolo o CRC…");
+    private final Widgets.Search search = new Widgets.Search(t("rm.search"));
     private final RomTable table = new RomTable();
-    private final Ui.Btn renameBtn = new Ui.Btn("Rinomina secondo lo standard", Pal.CARD, Pal.TXT, Pal.CARD_LINE);
-    private final Ui.Btn hideBtn = new Ui.Btn("Nascondi dalla libreria", Pal.CARD, Pal.TXT, Pal.CARD_LINE);
-    private final Ui.Btn coverBtn = new Ui.Btn("Cerca copertine", Pal.CARD, Pal.TXT, Pal.CARD_LINE);
+    private final Ui.Btn renameBtn = new Ui.Btn(t("rm.rename"), Pal.CARD, Pal.TXT, Pal.CARD_LINE);
+    private final Ui.Btn hideBtn = new Ui.Btn(t("act.hide"), Pal.CARD, Pal.TXT, Pal.CARD_LINE);
+    private final Ui.Btn coverBtn = new Ui.Btn(t("rm.findcovers"), Pal.CARD, Pal.TXT, Pal.CARD_LINE);
     private final RomDetail detail;
     private RomCatalog.Filter filter = RomCatalog.Filter.TO_FIX;
     private boolean scanning;
@@ -80,7 +82,7 @@ final class RomManagerScreen extends JPanel {
         tabRow.setOpaque(false);
         tabRow.setAlignmentX(LEFT_ALIGNMENT);
         for (RomCatalog.Filter f : RomCatalog.Filter.values()) {
-            Ui.Btn b = new Ui.Btn(f.label, null, Pal.TXT2, null).font(Pal.ui(14, 1)).onClick(() -> { filter = f; refresh(); });
+            Ui.Btn b = new Ui.Btn(f.label(), null, Pal.TXT2, null).font(Pal.ui(14, 1)).onClick(() -> { filter = f; refresh(); });
             tabs.put(f, b);
             tabRow.add(b);
         }
@@ -94,7 +96,7 @@ final class RomManagerScreen extends JPanel {
         centre.add(ts, BorderLayout.CENTER);
         JPanel sel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         sel.setOpaque(false);
-        sel.add(Widgets.label("Selezione multipla:", Pal.ui(13, 0), Pal.TXT2));
+        sel.add(Widgets.label(t("rm.multi"), Pal.ui(13, 0), Pal.TXT2));
         for (Ui.Btn b : new Ui.Btn[]{renameBtn, hideBtn, coverBtn}) { b.setPreferredSize(new Dimension(b.getPreferredSize().width, 38)); sel.add(b); }
         centre.add(sel, BorderLayout.SOUTH);
         add(centre, BorderLayout.CENTER);
@@ -114,8 +116,8 @@ final class RomManagerScreen extends JPanel {
         scanBtn.onClick(this::rescan);
         metaBtn.onClick(() -> { shell.dataChanged(); });
         renameBtn.onClick(() -> JOptionPane.showMessageDialog(this,
-                "La rinomina automatica arriverà con la milestone M4: i save state e la SRAM sono legati al nome del file,\nquindi va fatta spostandoli insieme alla ROM.",
-                "Rinomina secondo lo standard", JOptionPane.INFORMATION_MESSAGE));
+                t("rm.renamenote"),
+                t("rm.rename"), JOptionPane.INFORMATION_MESSAGE));
         hideBtn.onClick(() -> {
             List<RomCatalog.Row> s = table.selected();
             if (s.isEmpty()) return;
@@ -145,7 +147,7 @@ final class RomManagerScreen extends JPanel {
         for (var e : tabs.entrySet()) {
             RomCatalog.Filter f = e.getKey();
             boolean on = f == filter;
-            e.getValue().setText(f == RomCatalog.Filter.TO_FIX ? f.label + " · " + cat.count(f) : f.label);
+            e.getValue().setText(f == RomCatalog.Filter.TO_FIX ? f.label() + " · " + cat.count(f) : f.label());
             e.getValue().setColors(on ? Pal.ACTIVE : null, on ? Pal.TXT : Pal.TXT2, null);
             e.getValue().setPreferredSize(new Dimension(e.getValue().getPreferredSize().width, 36));
         }
@@ -153,8 +155,8 @@ final class RomManagerScreen extends JPanel {
         table.setRows(cat.view(filter, search.getText()), cat.metadataLoaded());
         rebuildFolders();
         int lines = data.metadata().size();
-        metaInfo.setText(lines > 0 ? "Metadati: games.tsv · " + lines + " righe" : "Nessun games.tsv (opzionale)");
-        scanBtn.setText(scanning ? "Scansione in corso…" : "Scansiona di nuovo");
+        metaInfo.setText(lines > 0 ? t("rm.metainfo", lines) : t("rm.nometa"));
+        scanBtn.setText(scanning ? t("rm.scanning") : t("rm.rescan"));
         scanBtn.setEnabled(!scanning);
     }
 
@@ -172,7 +174,7 @@ final class RomManagerScreen extends JPanel {
         renameBtn.setEnabled(any);
         hideBtn.setEnabled(any);
         coverBtn.setEnabled(any);
-        hideBtn.setText(any && s.stream().allMatch(RomCatalog.Row::hidden) ? "Mostra nella libreria" : "Nascondi dalla libreria");
+        hideBtn.setText(any && s.stream().allMatch(RomCatalog.Row::hidden) ? t("act.show") : t("act.hide"));
     }
 
     // ---------------------------------------------------------------------------------------- actions
@@ -184,22 +186,22 @@ final class RomManagerScreen extends JPanel {
         shell.rescanAsync(added -> {
             scanning = false;
             refresh();
-            if (added > 0) JOptionPane.showMessageDialog(this, added + (added == 1 ? " nuovo gioco trovato." : " nuovi giochi trovati."), "Scansione", JOptionPane.INFORMATION_MESSAGE);
+            if (added > 0) JOptionPane.showMessageDialog(this, t(added == 1 ? "rm.added1" : "rm.addedn", added), t("rm.scan"), JOptionPane.INFORMATION_MESSAGE);
         });
     }
 
     private void addFolder() {
         JFileChooser fc = new JFileChooser();
         fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        fc.setDialogTitle("Cartella con le ROM");
+        fc.setDialogTitle(t("rm.romfolder"));
         if (fc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
         data.addFolder(fc.getSelectedFile().toPath());
         rescan();
     }
 
     private void removeFolder(Path dir) {
-        int r = JOptionPane.showConfirmDialog(this, "Togliere la cartella dalla libreria?\nI giochi al suo interno escono dall'elenco; i file restano dove sono.\n\n" + dir,
-                "Rimuovi cartella", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+        int r = JOptionPane.showConfirmDialog(this, t("rm.removeq") + "\n\n" + dir,
+                t("rm.remove"), JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
         if (r != JOptionPane.OK_OPTION) return;
         data.removeFolder(dir);
         shell.dataChanged();
@@ -211,26 +213,26 @@ final class RomManagerScreen extends JPanel {
     }
 
     private void trashFile(Game g) {
-        int r = JOptionPane.showConfirmDialog(this, "Spostare nel cestino questo file?\n\n" + g.path() + "\n\nI save state restano nella cartella di configurazione.",
-                "Sposta nel cestino", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        int r = JOptionPane.showConfirmDialog(this, t("rm.trashq") + "\n\n" + g.path() + "\n\n" + t("rm.trashnote"),
+                t("act.trash"), JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (r != JOptionPane.YES_OPTION) return;
         try {
             data.trash(g);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Impossibile spostare il file:\n" + ex.getMessage(), "Errore", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, t("rm.trashfail") + "\n" + ex.getMessage(), t("error"), JOptionPane.ERROR_MESSAGE);
         }
         shell.dataChanged();
     }
 
     private void pickCover(Game g) {
         JFileChooser fc = new JFileChooser();
-        fc.setDialogTitle("Copertina di " + g.title());
-        fc.setFileFilter(new FileNameExtensionFilter("Immagini (png, jpg)", "png", "jpg", "jpeg"));
+        fc.setDialogTitle(t("rm.coverof", g.title()));
+        fc.setFileFilter(new FileNameExtensionFilter(t("rm.images"), "png", "jpg", "jpeg"));
         if (fc.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) return;
         try {
             covers.assign(g.path(), fc.getSelectedFile().toPath());
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Impossibile copiare l'immagine:\n" + ex.getMessage(), "Errore", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, t("rm.copyfail") + "\n" + ex.getMessage(), t("error"), JOptionPane.ERROR_MESSAGE);
         }
         shell.dataChanged();
     }
@@ -242,9 +244,8 @@ final class RomManagerScreen extends JPanel {
         int found = 0;
         for (RomCatalog.Row r : s) if (!r.hasCover() && covers.exists(r.game().path())) found++;
         shell.dataChanged();
-        JOptionPane.showMessageDialog(this, found + (found == 1 ? " copertina trovata" : " copertine trovate") + " tra i " + s.size() + " file selezionati.\n\n"
-                + "Le copertine si cercano per nome del file (o titolo normalizzato) in:\n• " + data.paths.coversDir() + "\n• la cartella covers/ accanto alla ROM o alla sua cartella.",
-                "Cerca copertine", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, t("rm.foundcovers", found, s.size()) + "\n\n" + t("rm.coverwhere", data.paths.coversDir()),
+                t("rm.findcovers"), JOptionPane.INFORMATION_MESSAGE);
     }
 
     // ---------------------------------------------------------------------------------------- folders column
@@ -252,7 +253,7 @@ final class RomManagerScreen extends JPanel {
     private void rebuildFolders() {
         folders.removeAll();
         JComponent cap = new JComponent() {
-            @Override protected void paintComponent(Graphics g) { Graphics2D g2 = Ui.g2(g); Ui.label(g2, "Cartelle", 4, 14); g2.dispose(); }
+            @Override protected void paintComponent(Graphics g) { Graphics2D g2 = Ui.g2(g); Ui.label(g2, t("rm.folders"), 4, 14); g2.dispose(); }
         };
         cap.setPreferredSize(new Dimension(100, 28));
         cap.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
@@ -260,12 +261,12 @@ final class RomManagerScreen extends JPanel {
         List<Path> roms = data.gameList.games().stream().map(e -> e.path()).toList();
         for (Sources.Folder f : data.sources.folders()) {
             int n = Sources.countUnder(f.path(), roms);
-            folders.add(new FolderRow(f.path(), n + (n == 1 ? " file" : " file") + " · scansione " + Ui.shortDate(f.lastScan()), true));
+            folders.add(new FolderRow(f.path(), t("rm.folderinfo", n, Ui.shortDate(f.lastScan())), true));
         }
         int imgs = covers.ownCount();
-        folders.add(new FolderRow(data.paths.coversDir(), "Copertine · " + imgs + (imgs == 1 ? " immagine" : " immagini"), false));
+        folders.add(new FolderRow(data.paths.coversDir(), t(imgs == 1 ? "rm.covers1" : "rm.coversn", imgs), false));
         folders.add(Box.createVerticalStrut(10));
-        Ui.Btn add = new Ui.Btn("+ Aggiungi cartella", null, Pal.TXT2, Pal.CARD_LINE).onClick(this::addFolder).font(Pal.ui(14, 1));
+        Ui.Btn add = new Ui.Btn(t("rm.addfolder"), null, Pal.TXT2, Pal.CARD_LINE).onClick(this::addFolder).font(Pal.ui(14, 1));
         add.setPreferredSize(new Dimension(100, 44));
         add.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
         add.setAlignmentX(LEFT_ALIGNMENT);
@@ -319,7 +320,7 @@ final class RomManagerScreen extends JPanel {
 
     private static final class Counters extends JComponent {
         private String[] values = new String[5];
-        private static final String[] LABELS = {"ROM totali", "Riconosciute", "Senza copertina", "Duplicati / versioni", "Errori di lettura"};
+        private static final String[] LABELS = {"cnt.total", "cnt.recognized", "cnt.nocover", "cnt.dups", "cnt.errors"};
         private static final Color[] COLORS = {Pal.TXT, Pal.OK, Pal.WARN, Pal.DUP, Pal.ERR};
 
         Counters() {
@@ -342,7 +343,7 @@ final class RomManagerScreen extends JPanel {
                 int x = i * (w + gap);
                 Ui.fillRound(g2, x, 0, w, getHeight(), 16, Pal.CARD, Pal.CARD_LINE);
                 Ui.text(g2, values[i], x + 18, 44, Pal.title(30), COLORS[i]);
-                Ui.text(g2, Ui.ellipsize(g2.getFontMetrics(Pal.ui(13, 0)), LABELS[i], w - 24), x + 18, 68, Pal.ui(13, 0), Pal.TXT2);
+                Ui.text(g2, Ui.ellipsize(g2.getFontMetrics(Pal.ui(13, 0)), t(LABELS[i]), w - 24), x + 18, 68, Pal.ui(13, 0), Pal.TXT2);
             }
             g2.dispose();
         }

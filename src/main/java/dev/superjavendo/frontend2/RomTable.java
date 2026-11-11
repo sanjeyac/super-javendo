@@ -1,5 +1,7 @@
 package dev.superjavendo.frontend2;
 
+import static dev.superjavendo.i18n.I18n.t;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -13,7 +15,7 @@ import java.util.function.Consumer;
 final class RomTable extends JComponent implements Scrollable {
     private static final int ROW = 46, HEAD = 40;
     private static final int[] FIXED = {128, 0, 0, 76, 70, 84, 84};
-    private static final String[] COLS = {"Stato", "File", "Abbinato a", "Reg.", "Dim.", "Copertina", "Metadati"};
+    private static final String[] COLS = {"rt.status", "rt.file", "rt.match", "rt.region", "rt.size", "rt.cover", "rt.meta"};
 
     private List<RomCatalog.Row> rows = List.of();
     private boolean metaLoaded;
@@ -123,7 +125,7 @@ final class RomTable extends JComponent implements Scrollable {
         int[] x = new int[COLS.length + 1];
         x[0] = 16;
         for (int c = 0; c < COLS.length; c++) x[c + 1] = x[c] + width[c];
-        for (int c = 0; c < COLS.length; c++) Ui.label(g2, COLS[c], x[c], HEAD - 14);
+        for (int c = 0; c < COLS.length; c++) Ui.label(g2, t(COLS[c]), x[c], HEAD - 14);
         g2.setColor(Pal.SEP);
         g2.drawLine(0, HEAD - 1, w, HEAD - 1);
         Rectangle clip = g.getClipBounds();
@@ -139,7 +141,7 @@ final class RomTable extends JComponent implements Scrollable {
             int base = y + ROW / 2 + 5;
             Color dim = r.hidden() ? Pal.TXT3 : Pal.TXT;
             Color[] pc = pill(r.status());
-            String label = r.hidden() ? "Nascosta" : r.status().label;
+            String label = r.hidden() ? t("st.hidden") : r.status().label();
             FontMetrics sm = g2.getFontMetrics(small);
             int pw = sm.stringWidth(label) + 20;
             Ui.fillRound(g2, x[0], y + ROW / 2 - 12, pw, 24, 10, r.hidden() ? Pal.CARD : pc[0], null);
@@ -147,11 +149,11 @@ final class RomTable extends JComponent implements Scrollable {
             Ui.text(g2, Ui.ellipsize(mm, game.fileName(), width[1] - 16), x[1], base, mono, dim);
             String match = r.hasMeta() ? game.title() : "—";
             Ui.text(g2, Ui.ellipsize(bm, match, width[2] - 16), x[2], base, body, dim);
-            Ui.text(g2, game.region().isEmpty() ? "—" : game.region(), x[3], base, body, Pal.TXT2);
+            Ui.text(g2, game.region().isEmpty() ? "—" : game.regionLabel(), x[3], base, body, Pal.TXT2);
             Ui.text(g2, Ui.size(game.size()), x[4], base, body, Pal.TXT2);
             boolean err = r.status() == RomCatalog.Status.ERROR;
-            Ui.text(g2, err ? "—" : r.hasCover() ? "Sì" : "No", x[5], base, body, err ? Pal.TXT3 : r.hasCover() ? Pal.OK : Pal.WARN);
-            Ui.text(g2, err || !metaLoaded ? "—" : r.hasMeta() ? "Sì" : "No", x[6], base, body, err || !metaLoaded ? Pal.TXT3 : r.hasMeta() ? Pal.OK : Pal.WARN);
+            Ui.text(g2, err ? "—" : r.hasCover() ? t("yes") : t("no"), x[5], base, body, err ? Pal.TXT3 : r.hasCover() ? Pal.OK : Pal.WARN);
+            Ui.text(g2, err || !metaLoaded ? "—" : r.hasMeta() ? t("yes") : t("no"), x[6], base, body, err || !metaLoaded ? Pal.TXT3 : r.hasMeta() ? Pal.OK : Pal.WARN);
         }
         g2.dispose();
     }

@@ -1,7 +1,8 @@
 package dev.superjavendo.frontend2;
 
+import static dev.superjavendo.i18n.I18n.t;
+
 import dev.superjavendo.config.AppPaths;
-import dev.superjavendo.frontend.ControllerConfigWindow;
 import dev.superjavendo.ui.EmuWindow;
 
 import javax.swing.*;
@@ -21,6 +22,7 @@ public final class Shell extends JPanel {
     private final UserData user;
     private final LibraryData data;
     private final RomManagerScreen romManager;
+    private final ControllerScreen controller;
     private final Covers covers;
     private final LibraryModel model;
     private final LibraryScreen library;
@@ -49,13 +51,13 @@ public final class Shell extends JPanel {
         model.setGames(data.all(), data.overrides);
         library = new LibraryScreen(this, model, covers, user);
         romManager = new RomManagerScreen(this, data, covers);
+        controller = new ControllerScreen(this, paths);
 
         screens.setBackground(Pal.MAIN);
         screens.add(library, "library");
         screens.add(romManager, "rom");
-        screens.add(placeholder("Controller", "Il nuovo editor dei profili è in arrivo (milestone M3). Intanto si può usare quello attuale.",
-                new Ui.Btn("Apri il configuratore attuale", Pal.ACCENT, Color.WHITE, null).onClick(() -> new ControllerConfigWindow().setVisible(true))), "controller");
-        screens.add(placeholder("Impostazioni", "Video, audio e percorsi: in arrivo (milestone M4).", null), "settings");
+        screens.add(controller, "controller");
+        screens.add(new SettingsScreen(this, paths, this::rebuildForLanguage), "settings");
         add(topBar(), BorderLayout.NORTH);
         add(screens, BorderLayout.CENTER);
         showTab("library");
@@ -110,10 +112,10 @@ public final class Shell extends JPanel {
         JLabel logo = Widgets.label("SUPER JAVENDO", Pal.title(21), Pal.TXT);
         logo.setBorder(new EmptyBorder(4, 12, 0, 22));
         left.add(logo);
-        addTab(left, "library", "Libreria");
-        addTab(left, "rom", "ROM Manager");
-        addTab(left, "controller", "Controller");
-        addTab(left, "settings", "Impostazioni");
+        addTab(left, "library", t("tab.library"));
+        addTab(left, "rom", t("tab.rom"));
+        addTab(left, "controller", t("tab.controller"));
+        addTab(left, "settings", t("tab.settings"));
         bar.add(left, BorderLayout.WEST);
 
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 12));
@@ -121,9 +123,9 @@ public final class Shell extends JPanel {
         runningPill.setOpaque(false);
         runningPill.setBorder(new EmptyBorder(0, 6, 0, 6));
         runningPill.add(runningLabel);
-        Ui.Btn front = new Ui.Btn("Porta in primo piano", new Color(0x1d3a2b), Pal.RUN, null).onClick(() -> { if (running != null) { running.toFront(); running.requestFocus(); } });
+        Ui.Btn front = new Ui.Btn(t("shell.front"), new Color(0x1d3a2b), Pal.RUN, null).onClick(() -> { if (running != null) { running.toFront(); running.requestFocus(); } });
         front.setPreferredSize(new Dimension(170, 36));
-        Ui.Btn close = new Ui.Btn("Chiudi", new Color(0x4a2630), Pal.ERR, null).onClick(this::closeRunning);
+        Ui.Btn close = new Ui.Btn(t("shell.close"), new Color(0x4a2630), Pal.ERR, null).onClick(this::closeRunning);
         close.setPreferredSize(new Dimension(80, 36));
         runningPill.add(front);
         runningPill.add(close);
@@ -148,6 +150,7 @@ public final class Shell extends JPanel {
 
     void showTab(String id) {
         cards.show(screens, id);
+        controller.setActive(id.equals("controller"));
         for (var e : tabs.entrySet()) {
             boolean on = e.getKey().equals(id);
             e.getValue().setColors(on ? Pal.ACTIVE : null, on ? Pal.TXT : Pal.TXT2, null);
@@ -155,25 +158,21 @@ public final class Shell extends JPanel {
         if (id.equals("library")) library.focusCatalogue();
     }
 
-    private JComponent placeholder(String title, String text, JComponent action) {
-        JPanel p = new JPanel(new GridBagLayout());
-        p.setBackground(Pal.MAIN);
-        JPanel box = new JPanel();
-        box.setOpaque(false);
-        box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS));
-        JLabel t = Widgets.label(title, Pal.title(28), Pal.TXT);
-        JLabel d = Widgets.label(text, Pal.ui(14, 0), Pal.TXT2);
-        t.setAlignmentX(CENTER_ALIGNMENT);
-        d.setAlignmentX(CENTER_ALIGNMENT);
-        box.add(t);
-        box.add(Box.createVerticalStrut(10));
-        box.add(d);
-        if (action != null) { box.add(Box.createVerticalStrut(20)); action.setAlignmentX(CENTER_ALIGNMENT); box.add(action); }
-        p.add(box);
-        return p;
+    /** "P1 keyboard + easysmx · P2 keyboard2 + xbox", read from controllers.cfg. */
+    /** The language changed: replaces this screen by a new one in the same window (a running game keeps running, unlinked). */
+    private void rebuildForLanguage() {
+        Window w = SwingUtilities.getWindowAncestor(this);
+        controller.setActive(false);
+        if (!(w instanceof JFrame f)) return;
+        Shell fresh = new Shell(paths, profiles);
+        f.setContentPane(fresh);
+        fresh.showTab("settings");
+        f.revalidate();
+        f.repaint();
     }
 
-    /** "P1 keyboard + easysmx · P2 keyboard2 + xbox", read from controllers.cfg. */
+    void refreshPads() { updatePads(); }
+
     private void updatePads() {
         StringBuilder sb = new StringBuilder();
         try {
@@ -216,7 +215,7 @@ public final class Shell extends JPanel {
             updateRunning();
             library.refresh();
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Impossibile avviare " + g.title() + ":\n" + ex.getMessage(), "Errore", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, t("shell.launchfail", g.title()) + "\n" + ex.getMessage(), t("error"), JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -227,7 +226,7 @@ public final class Shell extends JPanel {
     private void updateRunning() {
         boolean on = running != null && running.isDisplayable() && runningGame != null;
         runningPill.setVisible(on);
-        runningLabel.setText(on ? "●  In esecuzione: " + runningGame.title() : "");
+        runningLabel.setText(on ? "●  " + t("shell.running", runningGame.title()) : "");
         runningLabel.setForeground(Pal.RUN);
         runningPill.revalidate();
         repaint();

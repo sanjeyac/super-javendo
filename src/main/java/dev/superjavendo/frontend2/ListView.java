@@ -1,5 +1,7 @@
 package dev.superjavendo.frontend2;
 
+import static dev.superjavendo.i18n.I18n.t;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -11,7 +13,7 @@ import java.util.function.Predicate;
 /** Table view of the library: favourite, title, year, genre, players, region, last played, play time. */
 final class ListView extends JComponent implements Scrollable {
     private static final int ROW = 40, HEAD = 36;
-    private static final String[] COLS = {"", "Titolo", "Anno", "Genere", "Giocatori", "Regione", "Ultima partita", "Tempo"};
+    private static final String[] COLS = {"", "col.title", "col.year", "col.genre", "col.players", "col.region", "col.lastplayed", "col.time"};
     private static final int[] FIXED = {40, 0, 50, 80, 100, 80, 130, 70};
 
     private List<Game> games = List.of();
@@ -83,7 +85,7 @@ final class ListView extends JComponent implements Scrollable {
         int flex = w - 16;
         for (int f : FIXED) flex -= f;
         for (int c = 0; c < COLS.length; c++) x[c + 1] = x[c] + (FIXED[c] == 0 ? Math.max(160, flex) : FIXED[c]);
-        for (int c = 1; c < COLS.length; c++) Ui.label(g2, COLS[c], x[c] + (c == 1 ? 0 : 8), HEAD - 12);
+        for (int c = 1; c < COLS.length; c++) Ui.label(g2, t(COLS[c]), x[c] + (c == 1 ? 0 : 8), HEAD - 12);
         g2.setColor(Pal.SEP);
         g2.drawLine(0, HEAD - 1, w, HEAD - 1);
         for (int i = 0; i < games.size(); i++) {
@@ -94,13 +96,13 @@ final class ListView extends JComponent implements Scrollable {
             Ui.star(g2, 22, y + ROW / 2.0, 8, favorite.test(game), favorite.test(game) ? Pal.STAR : Pal.TXT3);
             int base = y + ROW / 2 + 5;
             FontMetrics fm = g2.getFontMetrics(Pal.ui(14, 2));
-            Ui.text(g2, Ui.ellipsize(fm, game.title() + (game.versions() > 1 ? "  · " + game.versions() + " versioni" : ""), x[2] - x[1] - 12), x[1], base, Pal.ui(14, 2), Pal.TXT);
+            Ui.text(g2, Ui.ellipsize(fm, game.title() + (game.versions() > 1 ? "  · " + t("grid.versions", game.versions()) : ""), x[2] - x[1] - 12), x[1], base, Pal.ui(14, 2), Pal.TXT);
             Font f = Pal.ui(13, 0);
             FontMetrics f2 = g2.getFontMetrics(f);
             Ui.text(g2, game.year() > 0 ? String.valueOf(game.year()) : "—", x[2] + 8, base, f, Pal.TXT2);
             Ui.text(g2, Ui.ellipsize(f2, game.genre().isEmpty() ? "—" : game.genre(), x[3] - x[2] - 16), x[3] + 8, base, f, Pal.TXT2);
             Ui.text(g2, Ui.players(game.players()), x[4] + 8, base, f, Pal.TXT2);
-            Ui.text(g2, game.region().isEmpty() ? "—" : game.region(), x[5] + 8, base, f, Pal.TXT2);
+            Ui.text(g2, game.region().isEmpty() ? "—" : game.regionLabel(), x[5] + 8, base, f, Pal.TXT2);
             Ui.text(g2, Ui.lastPlayed(lastPlayed.apply(game)), x[6] + 8, base, f, Pal.TXT2);
             Ui.text(g2, Ui.playTime(playSeconds.apply(game)), x[7] + 8, base, f, Pal.TXT2);
         }

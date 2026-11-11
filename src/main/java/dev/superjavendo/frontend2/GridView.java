@@ -1,5 +1,7 @@
 package dev.superjavendo.frontend2;
 
+import static dev.superjavendo.i18n.I18n.t;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
@@ -134,7 +136,7 @@ final class GridView extends JComponent implements Scrollable {
             String t = Ui.ellipsize(fm, game.title(), w - 24);
             Ui.text(g, t, r.x + (w - fm.stringWidth(t)) / 2, r.y + h / 2 + 10, Pal.ui(14, 2), Pal.TXT);
             FontMetrics f2 = g.getFontMetrics(Pal.ui(12, 0));
-            String m = "Copertina mancante";
+            String m = t("grid.nocover");
             Ui.text(g, m, r.x + (w - f2.stringWidth(m)) / 2, r.y + h / 2 + 30, Pal.ui(12, 0), Pal.TXT3);
         }
         // favourite star
@@ -146,13 +148,13 @@ final class GridView extends JComponent implements Scrollable {
         Font bf = Pal.ui(11, 2);
         FontMetrics bm = g.getFontMetrics(bf);
         if (running.test(game)) {
-            String s = "IN ESECUZIONE";
+            String s = t("running.badge");
             int bw = bm.stringWidth(s) + 16;
             Ui.fillRound(g, r.x + 8, r.y + h - 30, bw, 22, 8, Pal.PLAY, null);
             Ui.text(g, s, r.x + 16, r.y + h - 15, bf, Pal.PLAY_TXT);
         }
         if (game.versions() > 1) {
-            String s = game.versions() + " versioni";
+            String s = t("grid.versions", game.versions());
             int bw = bm.stringWidth(s) + 16;
             Ui.fillRound(g, r.x + w - bw - 8, r.y + h - 30, bw, 22, 8, new Color(0x12151c), null);
             Ui.text(g, s, r.x + w - bw, r.y + h - 15, bf, Pal.TXT);

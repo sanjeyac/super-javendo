@@ -1,5 +1,7 @@
 package dev.superjavendo.frontend2;
 
+import static dev.superjavendo.i18n.I18n.t;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -15,7 +17,7 @@ final class LibraryScreen extends JPanel {
     private final Shell shell;
 
     private final JPanel left = new JPanel();
-    private final Widgets.Search search = new Widgets.Search("Cerca titolo, editore…");
+    private final Widgets.Search search = new Widgets.Search(t("lib.search"));
     private final Ui.Btn sortBtn = new Ui.Btn("", Pal.CARD, Pal.TXT, Pal.CARD_LINE).font(Pal.ui(14, 1)).chevron();
     private final Ui.Btn gridBtn = new Ui.Btn("", Pal.ACTIVE, Pal.TXT, null).icon(Ui::gridIcon);
     private final Ui.Btn listBtn = new Ui.Btn("", Pal.CARD, Pal.TXT2, Pal.CARD_LINE).icon(Ui::listIcon);
@@ -56,7 +58,7 @@ final class LibraryScreen extends JPanel {
         tools.add(search, BorderLayout.CENTER);
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         right.setOpaque(false);
-        right.add(Widgets.label("Ordina", Pal.ui(13, 0), Pal.TXT2));
+        right.add(Widgets.label(t("lib.sort"), Pal.ui(13, 0), Pal.TXT2));
         sortBtn.setPreferredSize(new Dimension(170, 44));
         right.add(sortBtn);
         gridBtn.setPreferredSize(new Dimension(44, 44));
@@ -99,7 +101,7 @@ final class LibraryScreen extends JPanel {
             m.setBackground(Pal.CARD);
             m.setBorder(BorderFactory.createLineBorder(Pal.CARD_LINE));
             for (LibraryModel.Sort s : LibraryModel.Sort.values()) {
-                JMenuItem it = new JMenuItem(s.label);
+                JMenuItem it = new JMenuItem(s.label());
                 it.setFont(Pal.ui(14, 0));
                 it.setBackground(Pal.CARD);
                 it.setForeground(Pal.TXT);
@@ -146,9 +148,9 @@ final class LibraryScreen extends JPanel {
         JPanel box = new JPanel();
         box.setOpaque(false);
         box.setLayout(new BoxLayout(box, BoxLayout.Y_AXIS));
-        JLabel a = Widgets.label("Nessun gioco corrisponde ai filtri", Pal.ui(16, 2), Pal.TXT);
+        JLabel a = Widgets.label(t("lib.empty"), Pal.ui(16, 2), Pal.TXT);
         a.setAlignmentX(CENTER_ALIGNMENT);
-        Ui.Btn reset = new Ui.Btn("Azzera filtri", null, Pal.ACCENT_L, null).onClick(() -> { model.resetFilters(); search.setText(""); refresh(); });
+        Ui.Btn reset = new Ui.Btn(t("lib.reset"), null, Pal.ACCENT_L, null).onClick(() -> { model.resetFilters(); search.setText(""); refresh(); });
         reset.setAlignmentX(CENTER_ALIGNMENT);
         box.add(a);
         box.add(Box.createVerticalStrut(8));
@@ -166,13 +168,13 @@ final class LibraryScreen extends JPanel {
                 g2.setColor(Pal.SEP);
                 g2.drawLine(0, 0, getWidth(), 0);
                 int x = 24, y = getHeight() / 2 + 5;
-                x = pad(g2, x, y, "A", new Color(0xc9444f), "Gioca");
-                x = pad(g2, x, y, "B", new Color(0xe0b43c), "Indietro");
-                x = pad(g2, x, y, "Y", new Color(0x3f9b5e), "Preferito");
-                x = pad(g2, x, y, "X", new Color(0x3e62b5), "Save state");
-                x = key(g2, x, y, "L / R", "Cambia raccolta");
-                key(g2, x, y, "SELECT", "Cerca");
-                String r = "Doppio clic o Invio per avviare";
+                x = pad(g2, x, y, "A", new Color(0xc9444f), t("bar.play"));
+                x = pad(g2, x, y, "B", new Color(0xe0b43c), t("bar.back"));
+                x = pad(g2, x, y, "Y", new Color(0x3f9b5e), t("bar.fav"));
+                x = pad(g2, x, y, "X", new Color(0x3e62b5), t("bar.state"));
+                x = key(g2, x, y, "L / R", t("bar.collection"));
+                key(g2, x, y, "SELECT", t("bar.search"));
+                String r = t("bar.hint");
                 Ui.text(g2, r, getWidth() - 24 - g2.getFontMetrics(Pal.ui(13, 0)).stringWidth(r), y, Pal.ui(13, 0), Pal.TXT3);
                 g2.dispose();
             }
@@ -222,14 +224,14 @@ final class LibraryScreen extends JPanel {
 
     /** Re-applies the filters and redraws everything. */
     void refresh() {
-        sortBtn.setText(model.sort.label + "    ");
-        sortBtn.setPreferredSize(new Dimension(Math.max(170, sortBtn.getFontMetrics(Pal.ui(14, 1)).stringWidth(model.sort.label + "    ") + 34), 44));
+        sortBtn.setText(model.sort.label() + "    ");
+        sortBtn.setPreferredSize(new Dimension(Math.max(170, sortBtn.getFontMetrics(Pal.ui(14, 1)).stringWidth(model.sort.label() + "    ") + 34), 44));
         List<Game> view = model.view();
         Game keep = current;
         grid.setGames(view, keep);
         list.setGames(view, keep);
-        heading.setText(model.collection.label + (model.genre != null ? " · " + model.genre : ""));
-        countLabel.setText(view.size() + (view.size() == 1 ? " gioco" : " giochi"));
+        heading.setText(model.collection.label() + (model.genre != null ? " · " + model.genre : ""));
+        countLabel.setText(t(view.size() == 1 ? "lib.count1" : "lib.countn", view.size()));
         cards.show(content, view.isEmpty() ? "empty" : listMode ? "list" : "grid");
         if (view.isEmpty()) select(null);
         rebuildLeft();
@@ -239,28 +241,32 @@ final class LibraryScreen extends JPanel {
 
     private void rebuildLeft() {
         left.removeAll();
-        left.add(section("Raccolte"));
+        left.add(section(t("lib.collections")));
         for (LibraryModel.Collection c : LibraryModel.Collection.values())
-            left.add(new Widgets.NavRow(c.label, model.count(c), model.collection == c, () -> { model.collection = c; refresh(); }));
+            left.add(new Widgets.NavRow(c.label(), model.count(c), model.collection == c, () -> { model.collection = c; refresh(); }));
         Map<String, Integer> genres = model.genres();
         if (!genres.isEmpty()) {
             left.add(Box.createVerticalStrut(22));
-            left.add(section("Genere"));
-            left.add(new Widgets.NavRow("Tutti", model.allGames().size(), model.genre == null, () -> { model.genre = null; refresh(); }));
+            left.add(section(t("field.genre")));
+            left.add(new Widgets.NavRow(t("filter.all"), model.allGames().size(), model.genre == null, () -> { model.genre = null; refresh(); }));
             for (var e : genres.entrySet())
                 left.add(new Widgets.NavRow(e.getKey(), e.getValue(), e.getKey().equalsIgnoreCase(model.genre),
                         () -> { model.genre = e.getKey().equalsIgnoreCase(model.genre) ? null : e.getKey(); refresh(); }));
         }
         left.add(Box.createVerticalStrut(22));
-        left.add(section("Giocatori"));
-        JPanel pl = new JPanel(new GridLayout(1, 3, 8, 0));
+        left.add(section(t("field.players")));
+        JPanel pl = new JPanel(new GridBagLayout());
         pl.setOpaque(false);
         pl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
-        String[] names = {"Tutti", "1", "2+"};
+        String[] names = {t("filter.all"), "1", "2+"};
         for (int i = 0; i < 3; i++) {
             final int v = i;
             boolean on = model.players == v;
-            pl.add(new Ui.Btn(names[i], on ? Pal.ACCENT : Pal.CARD, on ? Color.WHITE : Pal.TXT, on ? null : Pal.CARD_LINE).onClick(() -> { model.players = v; refresh(); }));
+            GridBagConstraints gc = new GridBagConstraints();
+            gc.gridx = i; gc.weightx = i == 0 ? 2 : 1; gc.fill = GridBagConstraints.BOTH; gc.insets = new Insets(0, i == 0 ? 0 : 8, 0, 0);
+            Ui.Btn pb = new Ui.Btn(names[i], on ? Pal.ACCENT : Pal.CARD, on ? Color.WHITE : Pal.TXT, on ? null : Pal.CARD_LINE).onClick(() -> { model.players = v; refresh(); });
+            pb.setPreferredSize(new Dimension(40, 40));
+            pl.add(pb, gc);
         }
         left.add(pl);
         left.add(Box.createVerticalGlue());

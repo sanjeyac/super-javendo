@@ -1,5 +1,7 @@
 package dev.superjavendo.frontend2;
 
+import static dev.superjavendo.i18n.I18n.t;
+
 import javax.swing.JComponent;
 import java.awt.*;
 import java.awt.event.FocusAdapter;
@@ -129,15 +131,15 @@ final class Ui {
     // ------------------------------------------------------------------------------------------ formatting
 
     static String lastPlayed(long millis) {
-        if (millis <= 0) return "Mai";
+        if (millis <= 0) return t("time.never");
         LocalDate d = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate(), today = LocalDate.now();
-        if (d.equals(today)) return "Oggi";
-        if (d.equals(today.minusDays(1))) return "Ieri";
+        if (d.equals(today)) return t("time.today");
+        if (d.equals(today.minusDays(1))) return t("time.yesterday");
         return d.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
     }
 
     static String playTime(long seconds) {
-        if (seconds < 60) return seconds <= 0 ? "—" : "< 1 min";
+        if (seconds < 60) return seconds <= 0 ? "—" : t("time.lt1min");
         long m = seconds / 60;
         return m < 60 ? m + " min" : (m / 60) + " h " + (m % 60) + " min";
     }
@@ -148,7 +150,7 @@ final class Ui {
     }
 
     static String shortDate(long millis) {
-        return millis <= 0 ? "mai" : Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(DateTimeFormatter.ofPattern("d MMM", java.util.Locale.ITALIAN));
+        return millis <= 0 ? t("time.never").toLowerCase() : Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(DateTimeFormatter.ofPattern("d MMM", java.util.Locale.forLanguageTag(dev.superjavendo.i18n.I18n.language())));
     }
 
     static String players(int n) { return n <= 0 ? "—" : n == 1 ? "1" : n + (n >= 2 ? "" : ""); }

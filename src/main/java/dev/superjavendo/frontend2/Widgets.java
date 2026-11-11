@@ -78,6 +78,35 @@ final class Widgets {
         }
     }
 
+    /** A panel that follows the width of its scroll pane, so nothing is cut on the right. */
+    static final class Body extends JPanel implements Scrollable {
+        @Override public Dimension getPreferredScrollableViewportSize() { return getPreferredSize(); }
+        @Override public int getScrollableUnitIncrement(Rectangle r, int o, int d) { return 24; }
+        @Override public int getScrollableBlockIncrement(Rectangle r, int o, int d) { return r.height - 24; }
+        @Override public boolean getScrollableTracksViewportWidth() { return true; }
+        @Override public boolean getScrollableTracksViewportHeight() { return false; }
+    }
+
+    /** Rounded single-line text field in the dark theme. */
+    static final class Field extends JTextField {
+        Field(String text) {
+            super(text);
+            setOpaque(false);
+            setFont(Pal.ui(16, 2));
+            setForeground(Pal.TXT);
+            setCaretColor(Pal.TXT);
+            setBorder(new EmptyBorder(0, 14, 0, 14));
+            setPreferredSize(new Dimension(200, 44));
+        }
+
+        @Override protected void paintComponent(Graphics g) {
+            Graphics2D g2 = Ui.g2(g);
+            Ui.fillRound(g2, 0, 0, getWidth(), getHeight(), 16, Pal.CARD, isFocusOwner() ? Pal.ACCENT : Pal.CARD_LINE);
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
     /** A scroll pane with thin dark bars and no border. */
     static JScrollPane scroll(JComponent c, Color bg) {
         JScrollPane sp = new JScrollPane(c, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
