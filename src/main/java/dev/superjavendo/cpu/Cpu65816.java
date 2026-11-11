@@ -260,6 +260,9 @@ public final class Cpu65816 implements Stateful {
     // ---------------------------------------------------------------- execution
 
     /** Executes one instruction (or services an interrupt). Returns cycles consumed. */
+    /** Debug: print one line per executed instruction (PC, opcode, registers) to this stream. */
+    public java.io.PrintStream trace;
+
     public int step() {
         long start = cycles;
         if (stopped) { cycles += 1; return 1; }
@@ -280,6 +283,8 @@ public final class Cpu65816 implements Stateful {
             cycles += 1;
             return 1;
         }
+        if (trace != null) trace.printf("%06X %02X A=%04X X=%04X Y=%04X S=%04X D=%04X DB=%02X P=%02X E=%d%n",
+                pcFull(), mem.read(pcFull()) & 0xFF, a, x, y, this.s, d, db, getP(), e ? 1 : 0);
         execute(fetch8());
         return (int) (cycles - start);
     }

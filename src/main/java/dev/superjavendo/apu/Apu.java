@@ -35,6 +35,9 @@ public final class Apu implements Spc700.Bus, Stateful {
 
     public void setSink(Sink s) { this.sink = s; }
 
+    /** Optional MSU-1 audio, added to the DSP output. */
+    public dev.superjavendo.cart.Msu1 msu;
+
     public void reset() {
         java.util.Arrays.fill(ram, (byte) 0);
         iplEnabled = true;
@@ -58,7 +61,11 @@ public final class Apu implements Spc700.Bus, Stateful {
             while (dspCycles >= 32) {
                 dspCycles -= 32;
                 dsp.sample();
-                if (sink != null) sink.sample(dsp.outL, dsp.outR);
+                if (msu != null) {
+                    msu.nextSample();
+                    int l = Math.max(-32768, Math.min(32767, dsp.outL + msu.mixL)), r = Math.max(-32768, Math.min(32767, dsp.outR + msu.mixR));
+                    if (sink != null) sink.sample(l, r);
+                } else if (sink != null) sink.sample(dsp.outL, dsp.outR);
             }
         }
     }

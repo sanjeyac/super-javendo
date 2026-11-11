@@ -93,14 +93,17 @@ public final class Main {
         AppPaths paths = AppPaths.forCurrentUser();
         paths.migrateLegacyState(rom);
         cart.loadSram(srm);
-        System.out.printf("Title: %s | %s | ROM %d KB | SRAM %d KB | checksum %s | reset $%04X%n",
-                cart.title, cart.mapping, cart.rom.length / 1024, cart.sram.length / 1024,
+        System.out.printf("Title: %s | %s | Chip: %s | ROM %d KB | SRAM %d KB | checksum %s | reset $%04X%n",
+                cart.title, cart.mapping, cart.chip.label, cart.rom.length / 1024, cart.sram.length / 1024,
                 cart.checksumValid ? "ok" : "bad", cart.resetVector);
         Snes snes = new Snes(cart);
 
         snes.bus.ppu.debugMask = layerMask;
         java.io.ByteArrayOutputStream pcm = new java.io.ByteArrayOutputStream();
         if (wav != null) snes.bus.apu.setSink((l, r) -> { pcm.write(l); pcm.write(l >> 8); pcm.write(r); pcm.write(r >> 8); });
+        java.io.PrintStream ctraceOut = null;
+        java.io.PrintStream gtraceOut = null;
+        if (System.getProperty("gtrace") != null && snes.cart.coprocessor instanceof dev.superjavendo.cart.SuperFx) gtraceOut = new java.io.PrintStream(new java.io.BufferedOutputStream(new java.io.FileOutputStream(System.getProperty("gtrace")), 1 << 20), false);
         for (int f = 0; f < headlessFrames; f++) {
             snes.bus.watch = System.getProperty("watch") != null && f == Integer.getInteger("watch");
             snes.bus.watch2 = System.getProperty("watch2") != null && f >= Integer.getInteger("watch2") && f < Integer.getInteger("watch2End", Integer.getInteger("watch2") + 3);
@@ -108,6 +111,11 @@ public final class Main {
             snes.bus.ioTrace = System.getProperty("iotrace") != null && f == Integer.getInteger("iotrace");
             if (System.getProperty("scr") != null && f >= Integer.getInteger("scr") && f < Integer.getInteger("scr") + 3) System.out.println("frame " + (f - 1) + "\n" + snes.bus.ppu.dumpScroll());
             if (System.getProperty("wram") != null && f == Integer.getInteger("wram")) { StringBuilder sb = new StringBuilder(); for (int i = 0x10; i < 0x80; i += 2) sb.append(String.format("%d ", snes.bus.read(i) | (snes.bus.read(i + 1) << 8))); System.out.println("WRAMTAB " + sb); }
+            if (System.getProperty("ctrace") != null) {          // -Dctrace=FILE -Dctrace.from=N -Dctrace.to=M : per-instruction CPU trace
+                if (ctraceOut == null) ctraceOut = new java.io.PrintStream(new java.io.BufferedOutputStream(new java.io.FileOutputStream(System.getProperty("ctrace")), 1 << 20), false);
+                snes.cpu.trace = f >= Integer.getInteger("ctrace.from", 0) && f < Integer.getInteger("ctrace.to", Integer.MAX_VALUE) ? ctraceOut : null;
+            }
+            if (gtraceOut != null) ((dev.superjavendo.cart.SuperFx) snes.cart.coprocessor).trace = f >= Integer.getInteger("gtrace.from", 0) && f < Integer.getInteger("gtrace.to", Integer.MAX_VALUE) ? gtraceOut : null;
             snes.pcTrace = System.getProperty("pctrace") != null && f == Integer.getInteger("pctrace");
             snes.bus.dma.trace = snes.pcTrace || (System.getProperty("dtrace") != null && f == Integer.getInteger("dtrace"));
             snes.bus.ppu.trace = System.getProperty("trace") != null && f >= Integer.getInteger("trace") && f < Integer.getInteger("traceEnd", Integer.getInteger("trace") + 1);
@@ -118,10 +126,17 @@ public final class Main {
             snes.runFrame();
             if (every > 0 && (f + 1) % every == 0) save(snes, String.format("%s_%05d.png", everyPrefix, f + 1));
         }
+        if (ctraceOut != null) ctraceOut.flush();
+        if (gtraceOut != null) gtraceOut.flush();
+        if (System.getProperty("wramdump") != null) { byte[] w = new byte[0x20000]; for (int i = 0; i < w.length; i++) w[i] = (byte) snes.bus.read(0x7E0000 + i); java.nio.file.Files.write(java.nio.file.Path.of(System.getProperty("wramdump")), w); }
         if (snes.bus.readHist != null) snes.bus.readHist.forEach((k, v) -> System.out.printf("read %04X x%d%n", k, v));
         var c = snes.cpu;
         System.out.printf("After %d frames: PC=%06X A=%04X X=%04X Y=%04X S=%04X P=%02X cycles=%d spcPC=%04X%n",
                 snes.frameCount, c.pcFull(), c.a, c.x, c.y, c.s, c.getP(), c.cycles, snes.bus.apu.spc.pc);
+        if (snes.cart.coprocessor instanceof dev.superjavendo.cart.SuperFx fx) {
+            System.out.println(fx.status());
+            if (System.getProperty("cartram") != null) java.nio.file.Files.write(java.nio.file.Path.of(System.getProperty("cartram")), fx.ram());
+        }
         if (dump) { System.out.println(snes.bus.ppu.dump()); System.out.println(snes.bus.ppu.dumpScroll()); }
         if (wav != null) writeWav(wav, pcm.toByteArray());
         if (shot != null) { save(snes, shot); System.out.println("Saved " + shot); }

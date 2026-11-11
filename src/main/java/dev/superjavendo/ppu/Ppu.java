@@ -394,7 +394,7 @@ public final class Ppu implements Stateful {
         int msize = (mosaic >> 4) + 1;
         boolean mos = (mosaic & (1 << bg)) != 0 && msize > 1;
         int ys = mos ? s - s % msize : s;
-        int y = ys + vofs[bg];
+        int y = ys + 1 + vofs[bg];
         int tileRows = tall ? 64 : 32, tileCols = wide ? 64 : 32;
         int ty = (y / tsz) & (tileRows - 1);
         int fyBase = y & (tsz - 1);
@@ -452,7 +452,7 @@ public final class Ppu implements Stateful {
     private void renderMode7(int s) {
         boolean flipX = (m7sel & 1) != 0, flipY = (m7sel & 2) != 0;
         int wrapMode = m7sel >> 6;
-        int y = flipY ? 255 - s : s;
+        int y = flipY ? 255 - (s + 1) : s + 1;
         int hoff = clip10(m7hofs - m7x), voff = clip10(m7vofs - m7y);
         int ox = m7a * hoff + m7b * voff + (m7x << 8) + m7b * y;
         int oy = m7c * hoff + m7d * voff + (m7y << 8) + m7d * y;

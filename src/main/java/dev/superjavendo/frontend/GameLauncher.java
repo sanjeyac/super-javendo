@@ -26,8 +26,8 @@ public final class GameLauncher {
         Path srm = rom.resolveSibling(name.replaceFirst("\\.[^.]*$", "") + ".srm");
         paths.migrateLegacyState(rom);
         cart.loadSram(srm);
-        System.out.printf("Title: %s | %s | ROM %d KB | SRAM %d KB | checksum %s | reset $%04X%n",
-                cart.title, cart.mapping, cart.rom.length / 1024, cart.sram.length / 1024,
+        System.out.printf("Title: %s | %s | Chip: %s | ROM %d KB | SRAM %d KB | checksum %s | reset $%04X%n",
+                cart.title, cart.mapping, cart.chip.label, cart.rom.length / 1024, cart.sram.length / 1024,
                 cart.checksumValid ? "ok" : "bad", cart.resetVector);
         Snes snes = new Snes(cart);
         AtomicReference<EmuWindow> ref = new AtomicReference<>();

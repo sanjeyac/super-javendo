@@ -15,6 +15,11 @@ public final class Cartridge {
     public final String title;
     public final int resetVector;
     public final boolean checksumValid;
+    public final Chip chip;
+    /** The coprocessor fitted to this cartridge, or null. */
+    public final Coprocessor coprocessor;
+    /** MSU-1 streaming chip, present when a .msu file sits next to the ROM (null otherwise). */
+    public Msu1 msu;
 
     public Cartridge(byte[] file) {
         int offset = (file.length % 1024 == 512) ? 512 : 0; // strip copier header
@@ -32,10 +37,16 @@ public final class Cartridge {
         this.sram = new byte[sramBytes];
         this.resetVector = u16(data, h + 0x3C);
         this.checksumValid = ((u16(data, h + 0x1C) + u16(data, h + 0x1E)) & 0xFFFF) == 0xFFFF;
+        this.chip = Chip.fromRomType(data[h + 0x16] & 0xFF);
+        int expansionRam = data[h - 3] & 0xFF;                 // extended header: expansion RAM size, 1 KB << n
+        int chipRam = expansionRam >= 1 && expansionRam <= 7 ? 1024 << expansionRam : sramBytes > 0 ? sramBytes : 0x8000;
+        this.coprocessor = chip == Chip.SUPERFX ? new SuperFx(data, chipRam) : chip == Chip.DSP ? new Dsp1(mapping == Mapping.HIROM) : chip == Chip.OBC1 ? new Obc1() : null;
     }
 
     public static Cartridge load(Path path) throws IOException {
-        return new Cartridge(Files.readAllBytes(path));
+        Cartridge c = new Cartridge(RomFile.read(path));
+        if (Msu1.present(path)) c.msu = new Msu1(path);
+        return c;
     }
 
     /** Loads battery RAM from a .srm file if present. */
@@ -76,6 +87,7 @@ public final class Cartridge {
 
     public int read(int bank, int off) {
         bank &= 0xFF;
+        if (coprocessor != null) { int v = coprocessor.read(bank, off); if (v >= 0) return v; }
         if (mapping == Mapping.LOROM) {
             int b7 = bank & 0x7F;
             if (off < 0x8000) {
@@ -96,6 +108,7 @@ public final class Cartridge {
 
     public void write(int bank, int off, int value) {
         bank &= 0xFF;
+        if (coprocessor != null && coprocessor.write(bank, off, value)) return;
         if (sram.length == 0) return;
         if (mapping == Mapping.LOROM) {
             if (off < 0x8000 && (bank & 0x7F) >= 0x70 && (bank & 0x7F) <= 0x7D)

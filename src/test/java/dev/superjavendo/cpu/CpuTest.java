@@ -111,4 +111,30 @@ class CpuTest {
         run(5, 0x18, 0xFB, 0xC2, 0x20, 0xA9, 0x34, 0x12, 0xEB);
         assertEquals(0x3412, cpu.a);
     }
+    @Test void plpRestoresAllFlagsNative() {
+        // CLC; XCE; LDA #$FF(8bit); PHA; PLP -> all flags set, M/X set
+        run(5, 0x18, 0xFB, 0xA9, 0xFF, 0x48, 0x28);
+        assertTrue(cpu.fN && cpu.fV && cpu.fD && cpu.fI && cpu.fZ && cpu.fC);
+        assertTrue(cpu.fM && cpu.fX);
+    }
+
+    @Test void plpThenPhpRoundTrips() {
+        // CLC; XCE; LDA #$25; PHA; PLP; PHP; PLA -> $25 (flags C,I? no: $25 = M,I,C)
+        run(7, 0x18, 0xFB, 0xA9, 0x25, 0x48, 0x28, 0x08, 0x68);
+        assertEquals(0x25, cpu.a & 0xFF);
+    }
+
+    @Test void plpEmulationForcesMAndX() {
+        // E=1 after reset: pull $00 -> flags clear but M/X stay set, PHP shows $30
+        run(4, 0xA9, 0x00, 0x48, 0x28, 0x08);
+        assertEquals(0x30, ram.m[0x1FF] & 0xFF);
+    }
+
+    @Test void phpRepSepPlpSequenceFromPhlRom() {
+        // CLC XCE REP#$30 LDX#5 CPX#5 PHP REP#$C3 SEP#$20 SEP#$10 PLP PHP PLA
+        run(12, 0x18, 0xFB, 0xC2, 0x30, 0xA2, 0x05, 0x00, 0xE0, 0x05, 0x00, 0x08, 0xC2, 0xC3, 0xE2, 0x20, 0xE2, 0x10, 0x28, 0x08, 0x68);
+        assertEquals(0x07, ram.m[0x1FF] & 0xFF);       // I,Z,C restored by PLP, M/X clear (16-bit) as pushed
+        assertEquals(0x07, cpu.a & 0xFF);
+    }
+
 }

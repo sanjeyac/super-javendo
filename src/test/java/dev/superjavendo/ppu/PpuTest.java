@@ -25,6 +25,7 @@ class PpuTest {
         vramWrite(p, tileWord, 0xFF, 0x00);
         // CGRAM colour 1 = pure red (31)
         p.write(0x21, 1); p.write(0x22, 0x1F); p.write(0x22, 0x00);
+        p.write(0x0E, 0xFF); p.write(0x0E, 0x03);    // BGVOFS=-1: line 0 shows tile row 0 (PPU renders line+1)
         p.renderLine(0);
         assertEquals(0xFFFF0000, p.frame[0]);        // red, 31 -> 255
         assertEquals(0xFFFF0000, p.frame[7]);
@@ -39,6 +40,7 @@ class PpuTest {
         vramWrite(p, 0, 0x01, 0x00);                  // map entry 0 -> tile 1
         vramWrite(p, 0x1000 + 16, 0xFF, 0x00);        // tile 1 row 0: colour 1 everywhere
         p.write(0x21, 1); p.write(0x22, 0x1F); p.write(0x22, 0x00);
+        p.write(0x0E, 0xFF); p.write(0x0E, 0x03);     // BGVOFS=-1 (see above)
         p.write(0x0D, 63); p.write(0x0D, 0);          // BG1HOFS = 63
         p.renderLine(0);
         // tile 0 covers x 0..7; with hofs=63 the first screen pixels show map column 7 (empty, transparent)
@@ -47,6 +49,37 @@ class PpuTest {
         p.renderLine(0);
         assertEquals(0xFFFF0000, p.frame[3]);
         assertEquals(0xFF000000, p.frame[4]);
+    }
+
+    @Test void bgLineZeroShowsSecondTileRow() {
+        // Like hardware/snes9x: the first visible scanline renders tile row 1 (y+1) when scroll is 0.
+        Ppu p = new Ppu();
+        p.write(0x00, 0x0F); p.write(0x05, 0x01); p.write(0x2C, 0x01);
+        p.write(0x07, 0x00); p.write(0x0B, 0x01);
+        vramWrite(p, 0, 0x01, 0x00);
+        vramWrite(p, 0x1000 + 16, 0x00, 0x00);        // tile 1 row 0 empty
+        vramWrite(p, 0x1000 + 16 + 1, 0xFF, 0x00);    // tile 1 row 1: colour 1
+        p.write(0x21, 1); p.write(0x22, 0x1F); p.write(0x22, 0x00);
+        p.renderLine(0);
+        assertEquals(0xFFFF0000, p.frame[0]);
+        p.renderLine(7);                               // line 7 -> tile row 8 = next tile (empty)
+        assertEquals(0xFF000000, p.frame[7 * 256]);
+    }
+
+    @Test void mode7LineZeroSamplesSecondRow() {
+        Ppu p = new Ppu();
+        p.write(0x00, 0x0F); p.write(0x05, 0x07); p.write(0x2C, 0x01);
+        // identity matrix: A=D=$0100
+        p.write(0x1B, 0x00); p.write(0x1B, 0x01);
+        p.write(0x1E, 0x00); p.write(0x1E, 0x01);
+        // map entry 0 -> tile 1 (even VRAM bytes), tile 1 pixel data at odd bytes
+        p.write(0x15, 0x00); p.write(0x16, 0); p.write(0x17, 0); p.write(0x18, 1);
+        // tile 1 row 1 (pixel y=1) = colour 5: byte offset (1*64 + 8)*2 + 1 -> word (1*64+8), high byte
+        int word = 1 * 64 + 1 * 8;
+        p.write(0x15, 0x80); p.write(0x16, word & 0xFF); p.write(0x17, word >> 8); p.write(0x18, 0); p.write(0x19, 5);
+        p.write(0x21, 5); p.write(0x22, 0x1F); p.write(0x22, 0x00);
+        p.renderLine(0);
+        assertEquals(0xFFFF0000, p.frame[0]);
     }
 
     @Test void forceBlankIsBlack() {

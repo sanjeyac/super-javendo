@@ -44,12 +44,21 @@ public final class Bus implements Memory, Stateful {
     /** Master clocks the CPU has been stalled by DMA since the last call. */
     public int takeStall() { int s = stallClocks; stallClocks = 0; return s; }
 
+    /** Last value that travelled over the data bus: unmapped register bits read back as this ("open bus"). */
+    private int openBus;
+
     @Override
     public int read(int addr) {
+        return openBus = readMapped(addr);
+    }
+
+    private int readMapped(int addr) {
         int bank = (addr >> 16) & 0xFF, off = addr & 0xFFFF;
         if (bank == 0x7E || bank == 0x7F) return wram[((bank & 1) << 16) | off] & 0xFF;
         if ((bank & 0x7F) < 0x40) {
             if (off < 0x2000) return wram[off] & 0xFF;
+            if (off >= 0x3000 && off < 0x6000 && cart.coprocessor != null) { int v = cart.coprocessor.read(bank, off); if (v >= 0) return v; }
+            if (off >= 0x2000 && off < 0x2008 && cart.msu != null) return cart.msu.read(off);
             if (off < 0x6000) return regRead(off);
         }
         return cart.read(bank, off);
@@ -63,6 +72,8 @@ public final class Bus implements Memory, Stateful {
         if (bank == 0x7E || bank == 0x7F) { wram[((bank & 1) << 16) | off] = (byte) v; return; }
         if ((bank & 0x7F) < 0x40) {
             if (off < 0x2000) { wram[off] = (byte) v; return; }
+            if (off >= 0x3000 && off < 0x6000 && cart.coprocessor != null && cart.coprocessor.write(bank, off, v)) return;
+            if (off >= 0x2000 && off < 0x2008 && cart.msu != null) { cart.msu.write(off, v); return; }
             if (off < 0x6000) { regWrite(off, v); return; }
         }
         cart.write(bank, off, v);
@@ -86,9 +97,9 @@ public final class Bus implements Memory, Stateful {
             case 0x2180: { int v = wram[wramAddr] & 0xFF; wramAddr = (wramAddr + 1) & 0x1FFFF; return v; }
             case 0x4016: return joypad.readBit(0);
             case 0x4017: return joypad.readBit(1) | 0x1C;
-            case 0x4210: { int v = (t.nmiFlag ? 0x80 : 0) | 0x02; t.nmiFlag = false; return v; }
-            case 0x4211: { int v = t.irqFlag ? 0x80 : 0; t.irqFlag = false; return v; }
-            case 0x4212: return (t.inVBlank() ? 0x80 : 0) | (t.inHBlank() ? 0x40 : 0) | (t.autoJoyBusy ? 1 : 0);
+            case 0x4210: { int v = (t.nmiFlag ? 0x80 : 0) | (openBus & 0x70) | 0x02; t.nmiFlag = false; return v; }
+            case 0x4211: { int v = (t.irqFlag ? 0x80 : 0) | (openBus & 0x7F); t.irqFlag = false; return v; }
+            case 0x4212: return (t.inVBlank() ? 0x80 : 0) | (t.inHBlank() ? 0x40 : 0) | (t.autoJoyBusy ? 1 : 0) | (openBus & 0x3E);
             case 0x4213: return wrio;
             case 0x4214: return rddiv & 0xFF;
             case 0x4215: return rddiv >> 8;

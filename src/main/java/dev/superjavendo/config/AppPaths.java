@@ -38,6 +38,22 @@ public final class AppPaths {
     /** Cover images: {@code game-covers/<rom name>.png|jpg}. */
     public Path coversDir() { return configDir.resolve("game-covers"); }
 
+    /**
+     * Folders searched for a ROM's cover, in priority order: the config's {@link #coversDir()}, then
+     * {@code covers/} next to the ROM, then {@code covers/} next to the ROM's folder (the usual
+     * {@code snes/roms} + {@code snes/covers} layout). The first folder that has a match wins.
+     */
+    public java.util.List<Path> coverDirsFor(Path rom) {
+        java.util.List<Path> dirs = new java.util.ArrayList<>();
+        dirs.add(coversDir());
+        Path parent = rom.toAbsolutePath().getParent();
+        if (parent != null) {
+            dirs.add(parent.resolve("covers"));
+            if (parent.getParent() != null) dirs.add(parent.getParent().resolve("covers"));
+        }
+        return dirs;
+    }
+
     public Path statesDir() { return configDir.resolve("states"); }
 
     /** Save-state file of a ROM: <code>states/&lt;rom name without extension&gt;.state</code>. */

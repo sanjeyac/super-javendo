@@ -28,6 +28,8 @@ Per verificare la grafica senza toccare il desktop dell'utente: `--headless` + s
 
 ## Verità hardware e trappole già incontrate
 
+- GSU: i **branch (`BRA`/`Bxx`) non azzerano i prefissi** ALT1/ALT2/B/sreg/dreg: lo slot di ritardo li vede (Yoshi's Island usa `ALT2` + `BRA` + `AND #15`). Lo slot di ritardo prende l'operando dal bersaglio del salto. ALT3 si decodifica come ALT1 per `IBT/LMS/SMS` e `IWT/LM/SM`.
+
 - `BGnHOFS/VOFS` hanno un latch di scrittura: tenere i registri a 16 bit, non mascherare a 10.
 - HDMA: gira alla **fine** di ogni linea 0..224; i canali abilitati a metà frame partono dai `$43x8/$43xA` che il gioco ha già caricato
   (`hdmaInit` marca tutti i canali attivi, `doTransfer=false`). SF2 abilita HDMA a frame in corso.
@@ -45,18 +47,36 @@ Per verificare la grafica senza toccare il desktop dell'utente: `--headless` + s
 - Nuovi tipi di dispositivo: registrarli in `ControllerFactory` (strategy), non toccare `EmuWindow`.
 - Nuovi componenti con stato → implementare `Stateful` e incrementare `STATE_VERSION` se cambia il formato.
 
+## Cartucce di test per i chip (`tools/chiptests/`)
+
+Assemblatore 65816 minimo in Python (`asm.py`) + generatori di ROM; `run.py ROM` esegue la ROM su di noi e su snes9x e confronta la WRAM `$7E:2000..`
+(la ROM azzera prima l'area: snes9x riempie la WRAM di `$55`). `golden.py nome…` congela ROM + risultato di snes9x in `src/test/resources/chiptests/`,
+usati da `ChipRomTest` (non richiede snes9x). Oracoli: snes9x emula **DSP-1, Cx4, SA-1 (header map mode `$23`), S-DD1, SuperFX**; **non** OBC1 né MSU-1 (senza file); il core
+core bsnes non espone WRAM/SRAM via libretro ma la si estrae dallo stato serializzato (`run.py`, `golden.py`): secondo oracolo, per il DSP-1 più accurato di snes9x. `dsp1model.py` = prototipo Python dei comandi DSP-1 (confronto con l'oracolo).
+
+## Test master (`tools/testmaster/`, `docs/test-master.md`)
+
+ROM deterministiche che si autovalutano (PASS/FAIL a schermo + tabella in WRAM `$7E:2000`), una per chip; oggi `dsp1` (20 gruppi). `build.py dsp1 [--refresh]`, `run.py ROM` (matrice nostro|snes9x|bsnes). Dopo modifiche al chip: ricopiare la ROM in `src/test/resources/testmaster/` (`TestMasterTest`).
+
 ## Strumenti di confronto
 
-`diff.md` + `tools/diff/` (`refrun.py` esegue il core libretro di snes9x in modo headless con gli stessi `--press`;
+`docs/diff.md` + `tools/diff/` (`refrun.py` esegue il core libretro di snes9x in modo headless con gli stessi `--press`;
 `compare.py` produce striscia nostro|snes9x|diff). Attenzione: SF2 diverge per RNG/timing → per confronti pixel-per-pixel
 usare ROM deterministiche (`test_roms/`, licenza non dichiarata: solo locale, non committare in repo pubblici).
 
+## Documentazione (`docs/`)
+
+`roadmap.md` (cosa manca), `chips-plan.md` (piano coprocessori), `special-chip-games.md`, `diff.md` (runbook confronto con snes9x), `diff_results.md` (ultimo risultato suite). `README.md` e `CLAUDE.md` restano nella radice (GitHub e Claude Code li cercano lì).
+
 ## Cose aperte
 
-- **Sospetto offset verticale di 1 riga** nei fondali BG/Mode 7 rispetto a snes9x (schermata "LICENSED BY NINTENDO": identica con il nostro frame spostato su di 1).
-  Probabile fix: `y = riga + 1 + vofs` in `Ppu.renderBg`/`renderMode7`; aggiornare `PpuTest`, che assume la riga 0. Non applicato.
+- Offset verticale di 1 riga: **corretto** (`y = riga + 1 + vofs` in `renderBg`/`renderMode7`, coperto da `PpuTest`). Suite di confronto: 90/164 identiche.
+- Test PLP (`CPUTest/CPU/PHL`): **risolto** con l'open bus su `$4210-$4212` (`Bus.openBus`). Residui: `CPUMSC` 0.56%, `StarWars` 1.0%.
 - Pulizia della strumentazione di debug in `Main` (`-Dtrace`, `-Dwatch`, `--dump`, `--layers`, campi pubblici di debug in `Ppu`/`Bus`) (il `.gitignore` esiste già).
-- Chip speciali: ordine consigliato in `docs/special-chip-games.md` (S-DD1, OBC1, DSP-1, Cx4, SuperFX, …).
+- Chip: **SuperFX implementato** (`cart/SuperFx`, interfaccia `cart/Coprocessor`, rilevamento in `cart/Chip`): RAM del chip identica a snes9x su tutte le 58 ROM `CHIP/GSU` e su Yoshi's Island (frame 100); Star Fox, Star Fox 2, Stunt Race FX, Dirt Trax FX e Vortex girano e combaciano con snes9x a meno di timing/animazioni; **Doom** renderizza con texture corrotte (da indagare: istruzioni di moltiplicazione/DIV2, dithering, 8bpp); mancano timing preciso e arbitraggio ROM/RAM CPU↔GSU. Gli altri chip: `docs/chips-plan.md`. Strumenti: `-Dgtrace=FILE -Dgtrace.from/.to` (traccia GSU), `-Dcartram=FILE`, `refrun.py --sram FILE` (confronto RAM cartuccia).
+- **DSP-1** (`cart/Dsp1`, HLE): **tutti i comandi implementati**, identici a snes9x *e* bsnes su vettori casuali (Multiply2, Distance e Gyrate: seguiamo bsnes, snes9x sbaglia). Non modellato: Memory Dump (tabella ROM). **Super Mario Kart gira** (HiROM: DR `$6000`, SR `$7000` banchi `$00-1F`). Il protocollo è la macchina a stati di bsnes (ogni accesso a DR conta, anche le scritture mentre ci sono risultati pendenti): `-Ddsp1log=FILE` registra gli accessi di un gioco, `tools/testmaster/dsp1_replay.py LOG --emu bsnes` li rigioca sull'oracolo (0 differenze su 296k accessi di Mario Kart; snes9x diverge sul flush del raster). Secondo oracolo: `tools/chiptests/run.py` confronta anche con il core bsnes (WRAM estratta da `retro_serialize`, vedi `bsnes_wram`); `golden.py` congela i valori di bsnes. Il sorgente di bsnes in `other_emu/` (gitignored, GPL) serve solo da lettura: **non copiarne il codice**.
+- **OBC1** (`cart/Obc1`) e **MSU-1** (`cart/Msu1`, file `<rom>.msu` + `<rom>-N.pcm`, mix in `Apu`) implementati, solo con test unitari (nessun oracolo: snes9x non emula OBC1, MSU-1 richiede i file). **Non implementati**: S-DD1, Cx4, SA-1 (oracolo snes9x disponibile, ma tabelle/algoritmi da ricostruire).
+- Le ROM possono essere `.zip` (`cart/RomFile`): prende la prima ROM dentro; zip senza ROM → dialog nella libreria.
 - Multitap (oggi solo porte 1 e 2; il formato `controllers.cfg` accetta già `player3/4`), modi 5/6, interlacciato.
 - Frontend: la grafica "SNES visto dall'alto" è da fare (l'utente manderà dei mockup); scansione ricorsiva senza cartelle salvate; SRAM ancora accanto alla ROM (non in config).
 - Mapping dell'EasySMX (`easysmx.cfg`) dedotto, da verificare con `jstest`.

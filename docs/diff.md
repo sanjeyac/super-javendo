@@ -9,9 +9,12 @@ input sul desktop, risultati riproducibili (~600 fps).
 
 ## Strumenti (`tools/diff/`)
 
+> Suite automatica su tutte le ROM di `test_roms/`: `suite.py` (vedi [diff_results.md](diff_results.md) per l'ultimo risultato).
+
 | File | Scopo |
 |------|-------|
 | `refrun.py` | runner headless del core libretro (snes9x). Stessa CLI di `--headless` di superjavendo |
+| `suite.py` | esegue tutte le ROM di test su entrambi gli emulatori, produce `results.json` e le strisce di confronto |
 | `compare.py` | confronta due PNG → stampa % pixel diversi e scrive una striscia `[nostro \| snes9x \| diff]` |
 | `pngio.py` | lettura/scrittura PNG con solo numpy+zlib (niente Pillow) |
 

@@ -92,7 +92,7 @@ public final class ControllerConfigWindow extends JFrame {
             dirty = false;
             device.setEnabled(!file.isKeyboard());
             status.setText(file.isKeyboard() ? "Tastiera: «Aggiungi» e premi il tasto." : "Pad: «Aggiungi» e premi il pulsante sul joystick scelto.");
-            pad.setBound(file.bindings.keySet());
+            pad.setBindings(file.bindings);
             showBindings();
         } catch (IOException e) { status.setText("Errore di lettura: " + e.getMessage()); }
     }
@@ -107,7 +107,7 @@ public final class ControllerConfigWindow extends JFrame {
 
     private void changed() {
         dirty = true;
-        pad.setBound(file.bindings.keySet());
+        pad.setBindings(file.bindings);
         showBindings();
         status.setText("Modifiche non salvate.");
     }

@@ -133,7 +133,7 @@ component state is serialisable (`Stateful`) so save states are deterministic.
 
 - `mvn test`: unit tests for CPU, PPU, APU, scheduler, save states, input and frontend.
 - [`test_roms/`](test_roms/README.md): third-party homebrew test ROMs (PeterLemon/SNES) for deterministic checks, local use only (not tracked in git).
-- [`diff.md`](diff.md): procedure to compare SuperJavendo frame by frame with snes9x (libretro core)
+- [`diff.md`](docs/diff.md): procedure to compare SuperJavendo frame by frame with snes9x (libretro core)
   using identical inputs; tools are in `tools/diff/`.
 
 ## Legal

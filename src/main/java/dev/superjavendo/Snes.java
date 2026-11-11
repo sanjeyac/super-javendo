@@ -35,6 +35,7 @@ public final class Snes {
         this.timing = bus.timing;
         this.joypad = bus.joypad;
         bus.attachCpu(cpu);
+        bus.apu.msu = cart.msu;
         cpu.reset();
     }
 
@@ -71,10 +72,11 @@ public final class Snes {
         boolean irqFired = false;
         while (clock < Timing.LINE_CLOCKS) {
             if (!irqFired && irqAt >= 0 && clock >= irqAt) { irqFired = true; t.irqFlag = true; }
-            cpu.irqLine = t.irqFlag;
+            cpu.irqLine = t.irqFlag || (cart.coprocessor != null && cart.coprocessor.irq());
             t.h = clock;
             int mc = cpu.step() * CLOCKS_PER_CYCLE + bus.takeStall();
             bus.apu.tick(mc);
+            if (cart.coprocessor != null) cart.coprocessor.tick(mc);
             clock += mc;
         }
         if (v < Timing.VBLANK_START) clock += bus.dma.hdmaRun(); // HDMA runs in the hblank at the end of the line
@@ -125,6 +127,8 @@ public final class Snes {
             o.i(carry); o.l(frameCount);
             cpu.save(o);
             bus.save(o);
+            if (cart.coprocessor != null) cart.coprocessor.save(o);
+            if (cart.msu != null) cart.msu.save(o);   // only chip cartridges carry extra state
             o.flush();
         }
         return raw.toByteArray();
@@ -158,6 +162,8 @@ public final class Snes {
             carry = in.i(); frameCount = in.l();
             cpu.load(in);
             bus.load(in);
+            if (cart.coprocessor != null) cart.coprocessor.load(in);
+            if (cart.msu != null) cart.msu.load(in);
         }
     }
 }

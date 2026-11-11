@@ -1,5 +1,7 @@
 package dev.superjavendo.frontend;
 
+import dev.superjavendo.cart.RomFile;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,7 +18,10 @@ import java.util.stream.Stream;
  * {@code #} lines are comments.
  */
 public final class GameList {
-    private static final Set<String> EXTENSIONS = Set.of("sfc", "smc", "swc", "fig");
+    private final List<Path> rejected = new ArrayList<>();
+
+    /** Zip files met by the last scan that contain no ROM (they are not added to the list). */
+    public List<Path> rejectedZips() { return List.copyOf(rejected); }
 
     private final Path file;
     private final List<GameEntry> games = new ArrayList<>();
@@ -57,8 +62,10 @@ public final class GameList {
         Set<Path> known = new java.util.HashSet<>();
         for (GameEntry g : games) known.add(g.path().toAbsolutePath().normalize());
         int added = 0;
+        rejected.clear();
         try (Stream<Path> s = Files.walk(dir)) {
             for (Path p : (Iterable<Path>) s.filter(Files::isRegularFile).filter(GameList::isRom)::iterator) {
+                if (RomFile.isZip(p) && RomFile.firstRomEntry(p) == null) { rejected.add(p); continue; }
                 if (known.add(p.toAbsolutePath().normalize())) {
                     games.add(new GameEntry(p.toAbsolutePath().normalize(), titleOf(p)));
                     added++;
@@ -69,11 +76,18 @@ public final class GameList {
         return added;
     }
 
-    static boolean isRom(Path p) {
-        String n = p.getFileName().toString().toLowerCase(Locale.ROOT);
-        int dot = n.lastIndexOf('.');
-        return dot > 0 && EXTENSIONS.contains(n.substring(dot + 1));
+    /** Adds a single ROM (if not already listed) and returns its entry. */
+    public GameEntry add(Path rom) {
+        Path abs = rom.toAbsolutePath().normalize();
+        for (GameEntry g : games) if (g.path().toAbsolutePath().normalize().equals(abs)) return g;
+        GameEntry e = new GameEntry(abs, titleOf(abs));
+        games.add(e);
+        games.sort(Comparator.comparing(g -> g.title().toLowerCase(Locale.ROOT)));
+        return e;
     }
+
+    /** A ROM file or a zip archive (zips are checked for a ROM inside when scanned). */
+    static boolean isRom(Path p) { return RomFile.isRomName(p.getFileName().toString()) || RomFile.isZip(p); }
 
     static String titleOf(Path p) { return p.getFileName().toString().replaceFirst("\\.[^.]*$", ""); }
 }
