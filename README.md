@@ -6,6 +6,10 @@
 
 A **Super Nintendo (SNES)** emulator written in **Java**, with no external libraries: just the JDK, Swing and `javax.sound`.
 
+<p align="center">
+  <img src="screenshot/screenshot.png" alt="SuperJavendo library: cover grid, filters and the save states of the selected game" width="820">
+</p>
+
 ## Why
 
 This project exists to **re-study the architectures of the console hardware that made history** and to
@@ -71,10 +75,6 @@ java -jar target/superjavendo.jar --controllers         # controller configurato
 | `Esc` | quit |
 
 ## Frontend
-
-<p align="center">
-  <img src="screenshot/screenshot.png" alt="SuperJavendo library: cover grid, filters and the save states of the selected game" width="820">
-</p>
 
 Running the jar without a ROM opens the frontend (the original one is still available with `--ui-legacy`):
 
