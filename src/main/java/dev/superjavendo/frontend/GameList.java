@@ -86,6 +86,18 @@ public final class GameList {
         return e;
     }
 
+    /** Drops one entry from the list. */
+    public void remove(Path rom) {
+        Path abs = rom.toAbsolutePath().normalize();
+        games.removeIf(g -> g.path().toAbsolutePath().normalize().equals(abs));
+    }
+
+    /** Drops every entry located under {@code dir}. */
+    public void removeUnder(Path dir) {
+        Path abs = dir.toAbsolutePath().normalize();
+        games.removeIf(g -> g.path().toAbsolutePath().normalize().startsWith(abs));
+    }
+
     /** A ROM file or a zip archive (zips are checked for a ROM inside when scanned). */
     static boolean isRom(Path p) { return RomFile.isRomName(p.getFileName().toString()) || RomFile.isZip(p); }
 

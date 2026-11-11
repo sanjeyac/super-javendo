@@ -1,7 +1,7 @@
 # Frontend v2 — piano di realizzazione
 
 Specifica e mockup: `docs/ui-design/`. La v2 sta in un package separato (`dev.superjavendo.frontend2`) e **non tocca la v1**
-(`frontend/`): si avvia con `--ui2`, la v1 resta il default finché la v2 non è completa. Riuso dalla v1 solo codice non grafico
+(`frontend/`): si avvia di default; `--ui-legacy` apre la v1. Riuso dalla v1 solo codice non grafico
 (`GameList`, `Previews`, `GameLauncher`, `AppPaths`, `ProfileStore`…).
 
 ## Decisioni
@@ -20,7 +20,7 @@ Specifica e mockup: `docs/ui-design/`. La v2 sta in un package separato (`dev.su
 | # | Contenuto | Stato |
 |---|-----------|-------|
 | M1 | Guscio (barra superiore, schede, tre colonne, tema, font) + **Libreria** su dati reali: raccolte, genere, giocatori, ricerca, ordina, griglia/lista, preferiti, dettaglio con 5 slot di save state, indicatore «in esecuzione» con porta-in-primo-piano/chiudi, registrazione ultima partita e tempo | fatto |
-| M2 | CRC32 + `games.tsv` + gruppi di versioni, **ROM Manager** (cartelle sorgente, contatori, tabella stati, nascondi duplicato/cestino, copertine) | da fare |
+| M2 | CRC32 + `games.tsv` + gruppi di versioni, **ROM Manager** (cartelle sorgente in `sources.tsv`, contatori, tabella stati con selezione multipla, scelta del file principale, nascondi/mostra, cestino, copertine da file, «Cerca copertine»). Decisioni in `library-overrides.tsv`. «Rinomina secondo lo standard» è solo un avviso: arriva con M4 | fatto |
 | M3 | **Controller**: profili con ricerca, nome dispositivo da `/sys/class/input/jsN/device/name`, editor con disegno del pad, assegnazioni multiple, «aggiungi input» in ascolto, test dal vivo, sezione Giocatori (più profili per giocatore), scorciatoie | da fare |
 | M4 | Impostazioni (video, audio, percorsi), navigazione col pad nel launcher, «Riprendi» da uno slot, rinomina sicura (con spostamento di save state/SRAM) | da fare |
 

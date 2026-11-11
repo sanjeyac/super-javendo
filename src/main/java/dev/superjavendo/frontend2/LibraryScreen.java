@@ -118,7 +118,7 @@ final class LibraryScreen extends JPanel {
         list.onStar(this::toggleFavorite);
         detail.onPlay(() -> { if (current != null) shell.play(current); });
         detail.onStar(() -> { if (current != null) toggleFavorite(current); });
-        detail.onAssignCover(() -> shell.showTab("rom"));
+        detail.onAssignCover(() -> { if (current != null) shell.showRomManager(current); });
         covers.onLoaded(() -> SwingUtilities.invokeLater(() -> { grid.repaint(); detail.repaint(); }));
         search.addKeyListener(new KeyAdapter() {
             @Override public void keyPressed(KeyEvent e) {

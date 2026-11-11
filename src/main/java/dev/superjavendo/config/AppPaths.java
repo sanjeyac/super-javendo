@@ -38,6 +38,15 @@ public final class AppPaths {
     /** Per-game user data of the v2 frontend (favourites, last played, play time). */
     public Path userDataFile() { return configDir.resolve("library-user.tsv"); }
 
+    /** ROM folders the library is built from (path, last scan, file count). */
+    public Path sourcesFile() { return configDir.resolve("sources.tsv"); }
+
+    /** Per-file library decisions: hidden files and the chosen main file of each version group. */
+    public Path overridesFile() { return configDir.resolve("library-overrides.tsv"); }
+
+    /** Where trashed ROMs go when the desktop has no trash. */
+    public Path trashDir() { return configDir.resolve("trash"); }
+
     /** Optional game metadata (TSV keyed by CRC32). */
     public Path metadataFile() { return configDir.resolve("games.tsv"); }
 

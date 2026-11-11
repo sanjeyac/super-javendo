@@ -15,7 +15,7 @@ import java.util.zip.CRC32;
 /** CRC32 of ROM files (of the ROM data, without a copier header), cached by path, size and modification time. */
 final class Meta {
     private final Path cacheFile;
-    private final Map<String, String[]> cache = new HashMap<>();      // path -> {size, mtime, crc}
+    private final Map<String, String[]> cache = new java.util.concurrent.ConcurrentHashMap<>();      // path -> {size, mtime, crc}
 
     Meta(Path cacheFile) { this.cacheFile = cacheFile; }
 

@@ -73,6 +73,27 @@ final class Covers {
         }).orElse(null);
     }
 
+    /** Forgets everything found so far (cover folders are read again on the next lookup). */
+    void reset() { indexes.clear(); found.clear(); covers.clear(); }
+
+    /** Copies {@code image} into the config's cover folder as {@code <rom name>.<ext>}, which then wins over any other cover. */
+    Path assign(Path rom, Path image) throws java.io.IOException {
+        String fn = image.getFileName().toString();
+        String ext = fn.contains(".") ? fn.substring(fn.lastIndexOf('.')).toLowerCase(java.util.Locale.ROOT) : ".png";
+        String base = rom.getFileName().toString().replaceFirst("\\.[^.]*$", "");
+        Files.createDirectories(paths.coversDir());
+        Path target = paths.coversDir().resolve(base + ext);
+        if (!image.toAbsolutePath().normalize().equals(target.toAbsolutePath().normalize())) Files.copy(image, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        reset();
+        return target;
+    }
+
+    /** Number of cover images in the config's cover folder. */
+    int ownCount() {
+        try (var s = Files.list(paths.coversDir())) { return (int) s.filter(f -> f.toString().matches("(?i).*\\.(png|jpe?g)")).count(); }
+        catch (Exception e) { return 0; }
+    }
+
     /** True if a cover file exists for the ROM (cheap: no image decoding). */
     boolean exists(Path rom) { return coverFile(rom) != null; }
 

@@ -2,8 +2,6 @@ package dev.superjavendo.frontend2;
 
 import dev.superjavendo.config.AppPaths;
 import dev.superjavendo.frontend.ControllerConfigWindow;
-import dev.superjavendo.frontend.GameEntry;
-import dev.superjavendo.frontend.GameList;
 import dev.superjavendo.ui.EmuWindow;
 
 import javax.swing.*;
@@ -11,8 +9,6 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,9 +18,9 @@ import java.util.Map;
 public final class Shell extends JPanel {
     private final AppPaths paths;
     private final Map<Integer, String> profiles;
-    private final GameList gameList;
     private final UserData user;
-    private final Meta crcs;
+    private final LibraryData data;
+    private final RomManagerScreen romManager;
     private final Covers covers;
     private final LibraryModel model;
     private final LibraryScreen library;
@@ -43,22 +39,20 @@ public final class Shell extends JPanel {
         super(new BorderLayout());
         this.paths = paths;
         this.profiles = profiles;
-        gameList = new GameList(paths.gameListFile());
         user = new UserData(paths.userDataFile());
-        crcs = new Meta(paths.configDir().resolve("crc.cache"));
         covers = new Covers(paths);
         model = new LibraryModel(user, g -> covers.exists(g.path()));
         setBackground(Pal.MAIN);
 
-        gameList.load();
         user.load();
-        crcs.load();
-        model.setGames(buildGames(MetaDb.load(paths.metadataFile()), false));
+        data = new LibraryData(paths, covers);
+        model.setGames(data.all(), data.overrides);
         library = new LibraryScreen(this, model, covers, user);
+        romManager = new RomManagerScreen(this, data, covers);
 
         screens.setBackground(Pal.MAIN);
         screens.add(library, "library");
-        screens.add(placeholder("ROM Manager", "Cartelle, duplicati, copertine e metadati: in arrivo (milestone M2).", null), "rom");
+        screens.add(romManager, "rom");
         screens.add(placeholder("Controller", "Il nuovo editor dei profili è in arrivo (milestone M3). Intanto si può usare quello attuale.",
                 new Ui.Btn("Apri il configuratore attuale", Pal.ACCENT, Color.WHITE, null).onClick(() -> new ControllerConfigWindow().setVisible(true))), "controller");
         screens.add(placeholder("Impostazioni", "Video, audio e percorsi: in arrivo (milestone M4).", null), "settings");
@@ -72,28 +66,29 @@ public final class Shell extends JPanel {
 
     // ------------------------------------------------------------------------------------------ data
 
-    private List<Game> buildGames(MetaDb db, boolean withCrc) {
-        List<Game> out = new ArrayList<>();
-        for (GameEntry e : gameList.games()) {
-            String crc = crcs.cached(e.path());
-            long size = 0;
-            try { size = Files.size(e.path()); } catch (Exception ignored) { }
-            out.add(Game.of(e, db.get(crc), crc, size));
-        }
-        return out;
+    /** Recomputes games and catalogue from the current data and redraws both screens (event thread). */
+    void dataChanged() {
+        data.rebuild();
+        model.setGames(data.all(), data.overrides);
+        library.refresh();
+        romManager.refresh();
     }
 
-    /** Computes the missing CRC32s in the background, then rebuilds the game list with the metadata they unlock. */
+    /** Computes the missing CRC32s in the background, then rebuilds with the metadata they unlock. */
     private void computeCrcsAsync() {
         Thread t = new Thread(() -> {
-            boolean any = false;
-            for (GameEntry e : gameList.games()) if (crcs.cached(e.path()) == null) { crcs.compute(e.path()); any = true; }
-            if (!any) return;
-            crcs.save();
-            MetaDb db = MetaDb.load(paths.metadataFile());
-            List<Game> games = buildGames(db, true);
-            SwingUtilities.invokeLater(() -> { model.setGames(games); library.refresh(); });
+            if (data.computeCrcs()) SwingUtilities.invokeLater(this::dataChanged);
         }, "crc32");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    /** Scans the source folders in the background, then refreshes; {@code done} gets the number of new games. */
+    void rescanAsync(java.util.function.IntConsumer done) {
+        Thread t = new Thread(() -> {
+            int added = data.rescan();
+            SwingUtilities.invokeLater(() -> { dataChanged(); done.accept(added); });
+        }, "scan");
         t.setDaemon(true);
         t.start();
     }
@@ -143,6 +138,12 @@ public final class Shell extends JPanel {
         b.setPreferredSize(new Dimension(b.getPreferredSize().width + 8, 40));
         tabs.put(id, b);
         to.add(b);
+    }
+
+    /** Opens the ROM Manager on one game's file. */
+    void showRomManager(Game g) {
+        showTab("rom");
+        romManager.select(g.path());
     }
 
     void showTab(String id) {
@@ -238,7 +239,7 @@ public final class Shell extends JPanel {
         f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         f.setContentPane(this);
         f.setSize(1440, 900);
-        f.setMinimumSize(new Dimension(1100, 640));
+        f.setMinimumSize(new Dimension(1280, 700));
         f.setLocationRelativeTo(null);
         return f;
     }
@@ -247,6 +248,8 @@ public final class Shell extends JPanel {
     public java.awt.image.BufferedImage render(int w, int h, String tab, boolean listView, String query) throws Exception {
         library.preset(listView, query);
         showTab(tab);
+        if (tab.equals("rom") && !query.isBlank())            // screenshots: open the ROM Manager on the first file matching the query
+            for (Game g : data.all()) if (g.fileName().toLowerCase().contains(query.toLowerCase())) { showRomManager(g); break; }
         setSize(w, h);
         for (int i = 0; i < 3; i++) {
             SwingUtilities.invokeAndWait(() -> layoutAll(this));

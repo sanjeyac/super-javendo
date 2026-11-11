@@ -41,13 +41,30 @@ public final class LibraryModel {
         this.hasCover = hasCover;
     }
 
-    /** Replaces the game list; files with the same normalized title become one game with {@code versions > 1}. */
-    public void setGames(List<Game> all) {
+    /** Replaces the game list (no hiding, first file of each group is the main one). */
+    public void setGames(List<Game> all) { setGames(all, null); }
+
+    /**
+     * Replaces the game list. Files with the same normalized title become one game with {@code versions > 1}; the main
+     * file is the one the user chose, else a verified dump, else one that is not a bad dump, else the first. Hidden files are left out.
+     */
+    public void setGames(List<Game> all, Overrides overrides) {
         Map<String, List<Game>> groups = new LinkedHashMap<>();
-        for (Game g : all) groups.computeIfAbsent(g.groupKey(), k -> new ArrayList<>()).add(g);
+        for (Game g : all) {
+            if (overrides != null && overrides.isHidden(g.path())) continue;
+            groups.computeIfAbsent(g.groupKey(), k -> new ArrayList<>()).add(g);
+        }
         List<Game> out = new ArrayList<>();
-        for (List<Game> grp : groups.values()) out.add(grp.get(0).withVersions(grp.size()));
+        for (var e : groups.entrySet()) out.add(mainOf(e.getValue(), overrides == null ? null : overrides.primaryOf(e.getKey())).withVersions(e.getValue().size()));
         games = out;
+    }
+
+    /** The main file of a group of files of the same game. */
+    static Game mainOf(List<Game> grp, Path chosen) {
+        if (chosen != null) for (Game g : grp) if (g.path().toAbsolutePath().normalize().equals(chosen.toAbsolutePath().normalize())) return g;
+        Game best = grp.get(0);
+        for (Game g : grp) if (g.quality().compareTo(best.quality()) < 0) best = g;
+        return best;
     }
 
     public List<Game> allGames() { return games; }

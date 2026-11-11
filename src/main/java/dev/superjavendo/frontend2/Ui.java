@@ -142,6 +142,15 @@ final class Ui {
         return m < 60 ? m + " min" : (m / 60) + " h " + (m % 60) + " min";
     }
 
+    static String size(long bytes) {
+        if (bytes <= 0) return "0 KB";
+        return bytes >= 1 << 20 ? Math.round(bytes / 1048576.0) + " MB" : Math.max(1, Math.round(bytes / 1024.0)) + " KB";
+    }
+
+    static String shortDate(long millis) {
+        return millis <= 0 ? "mai" : Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(DateTimeFormatter.ofPattern("d MMM", java.util.Locale.ITALIAN));
+    }
+
     static String players(int n) { return n <= 0 ? "—" : n == 1 ? "1" : n + (n >= 2 ? "" : ""); }
 
     // ------------------------------------------------------------------------------------------ widgets
@@ -189,6 +198,7 @@ final class Ui {
 
         @Override protected void paintComponent(Graphics g) {
             Graphics2D g2 = g2(g);
+            if (!isEnabled()) g2.setComposite(AlphaComposite.SrcOver.derive(0.4f));
             Color b = bg;
             if (b != null && hover) b = b.brighter();
             Ui.fillRound(g2, 0, 0, getWidth(), getHeight(), radius * 2, b, hover && b == null ? Pal.ACCENT_L : line);

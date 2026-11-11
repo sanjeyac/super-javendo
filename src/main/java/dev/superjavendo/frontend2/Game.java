@@ -46,6 +46,21 @@ public record Game(GameEntry entry, String title, String publisher, int year, St
                 meta == null ? "" : meta.genre(), meta == null ? 0 : meta.players(), region, crc, size, 1, key);
     }
 
+    public enum Quality { VERIFIED, UNKNOWN, BAD }
+
+    /** Dump quality from the usual tags: [!] verified good dump, [b1]/[b2]… bad dump. */
+    public Quality quality() {
+        String n = fileName();
+        if (n.matches(".*\\[b\\d*\\].*")) return Quality.BAD;
+        return n.contains("[!]") ? Quality.VERIFIED : Quality.UNKNOWN;
+    }
+
+    /** The first bracket tag of the file name ("b1"), or "" if there is none. */
+    public String badTag() {
+        Matcher m = Pattern.compile("\\[(b\\d*)\\]").matcher(fileName());
+        return m.find() ? m.group(1) : "";
+    }
+
     public Game withVersions(int n) {
         return new Game(entry, title, publisher, year, genre, players, region, crc32, size, n, groupKey);
     }
