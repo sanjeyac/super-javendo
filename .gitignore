@@ -6,3 +6,13 @@ test_roms/**/*.sfc
 .idea/
 *.iml
 __pycache__/
+tools/chiptests/out/
+tools/chiptests/__pycache__/
+
+# Emulatori di terzi (es. bsnes, GPLv3) tenuti solo come riferimento di lettura
+other_emu/
+
+# third-party emulator sources kept locally as reading material only (GPL): never commit
+other_emu/
+tools/testmaster/out/
+tools/testmaster/__pycache__/

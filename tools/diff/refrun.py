@@ -63,6 +63,9 @@ def main():
     ap.add_argument("--press", action="append")
     ap.add_argument("--press2", action="append")
     ap.add_argument("--audio-stats", action="store_true")
+    ap.add_argument("--sram", help="write the cartridge RAM (battery RAM / SuperFX RAM) to this file after the last frame")
+    ap.add_argument("--wram", help="write the 128 KB of WRAM to this file after the last frame")
+    ap.add_argument("--state", help="write the core's serialized state to this file after the last frame")
     args = ap.parse_args()
 
     core = C.CDLL(args.core)
@@ -160,6 +163,28 @@ def main():
     if args.audio_stats and state["samples"]:
         s = np.concatenate(state["samples"]).astype(np.float64)
         print(f"audio: {len(s) // 2} stereo samples, peak={np.abs(s).max():.0f} rms={np.sqrt((s ** 2).mean()):.0f}")
+    if args.sram:
+        core.retro_get_memory_data.restype = C.c_void_p
+        core.retro_get_memory_size.restype = C.c_size_t
+        n = core.retro_get_memory_size(0)           # RETRO_MEMORY_SAVE_RAM
+        ptr = core.retro_get_memory_data(0)
+        open(args.sram, "wb").write(C.string_at(ptr, n) if n and ptr else b"")
+        print("sram dump", args.sram, n, "bytes")
+    if args.wram:
+        core.retro_get_memory_data.restype = C.c_void_p
+        core.retro_get_memory_size.restype = C.c_size_t
+        n = core.retro_get_memory_size(2)           # RETRO_MEMORY_SYSTEM_RAM
+        ptr = core.retro_get_memory_data(2)
+        open(args.wram, "wb").write(C.string_at(ptr, n))
+        print("wram dump", args.wram, n, "bytes")
+    if args.state:
+        core.retro_serialize_size.restype = C.c_size_t
+        n = core.retro_serialize_size()
+        buf = C.create_string_buffer(n)
+        core.retro_serialize.restype = C.c_bool
+        ok = core.retro_serialize(buf, C.c_size_t(n))
+        open(args.state, "wb").write(buf.raw)
+        print("state dump", args.state, n, "bytes", "ok" if ok else "FAILED")
     core.retro_unload_game()
     core.retro_deinit()
 
