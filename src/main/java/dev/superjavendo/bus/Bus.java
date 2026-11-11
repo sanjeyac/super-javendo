@@ -57,7 +57,7 @@ public final class Bus implements Memory, Stateful {
         if (bank == 0x7E || bank == 0x7F) return wram[((bank & 1) << 16) | off] & 0xFF;
         if ((bank & 0x7F) < 0x40) {
             if (off < 0x2000) return wram[off] & 0xFF;
-            if (off >= 0x3000 && off < 0x6000 && cart.coprocessor != null) { int v = cart.coprocessor.read(bank, off); if (v >= 0) return v; }
+            if (off >= 0x2200 && off < 0x6000 && cart.coprocessor != null) { int v = cart.coprocessor.read(bank, off); if (v >= 0) return v; }
             if (off >= 0x2000 && off < 0x2008 && cart.msu != null) return cart.msu.read(off);
             if (off < 0x6000) return regRead(off);
         }
@@ -72,7 +72,7 @@ public final class Bus implements Memory, Stateful {
         if (bank == 0x7E || bank == 0x7F) { wram[((bank & 1) << 16) | off] = (byte) v; return; }
         if ((bank & 0x7F) < 0x40) {
             if (off < 0x2000) { wram[off] = (byte) v; return; }
-            if (off >= 0x3000 && off < 0x6000 && cart.coprocessor != null && cart.coprocessor.write(bank, off, v)) return;
+            if (off >= 0x2200 && off < 0x6000 && cart.coprocessor != null && cart.coprocessor.write(bank, off, v)) return;
             if (off >= 0x2000 && off < 0x2008 && cart.msu != null) { cart.msu.write(off, v); return; }
             if (off < 0x6000) { regWrite(off, v); return; }
         }

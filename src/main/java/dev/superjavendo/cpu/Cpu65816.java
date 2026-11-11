@@ -25,6 +25,8 @@ public final class Cpu65816 implements Stateful {
     public boolean waiting, stopped;
     public boolean nmiPending, irqLine;
     public long cycles;
+    /** Optional replacement for vector fetches ($FFEA.. etc.): returns the vector or -1 to read memory (SA-1 uses registers). */
+    public java.util.function.IntUnaryOperator vectorOverride;
 
     public Cpu65816(Memory mem) {
         this.mem = mem;
@@ -37,7 +39,7 @@ public final class Cpu65816 implements Stateful {
         s = 0x01FF; d = 0; db = 0; pb = 0;
         x &= 0xFF; y &= 0xFF;
         waiting = stopped = false;
-        pc = read16(0xFFFC);
+        pc = vector(0xFFFC);
     }
 
     public int getP() {
@@ -68,6 +70,12 @@ public final class Cpu65816 implements Stateful {
         if (wide) wr8(addr + 1, v >> 8);
     }
     private int read16(int addr) { return rd(addr, true); }
+
+    private int vector(int addr) {
+        int v = vectorOverride == null ? -1 : vectorOverride.applyAsInt(addr);
+        if (v >= 0) { cycles += 2; return v & 0xFFFF; }
+        return read16(addr);
+    }
 
     private int fetch8() { int v = rd8((pb << 16) | pc); pc = (pc + 1) & 0xFFFF; return v; }
     private int fetch16() { int lo = fetch8(); return lo | (fetch8() << 8); }
@@ -254,7 +262,7 @@ public final class Cpu65816 implements Stateful {
         push8(p);
         fD = false; fI = true;
         pb = 0;
-        pc = read16(e ? vecEmu : vecNative);
+        pc = vector(e ? vecEmu : vecNative);
     }
 
     // ---------------------------------------------------------------- execution

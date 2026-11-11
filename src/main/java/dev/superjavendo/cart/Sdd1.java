@@ -30,7 +30,8 @@ public final class Sdd1 implements Coprocessor {
 
     // ------------------------------------------------------------------------------------------ memory
 
-    private static int mirror(int addr, int size) {
+    /** Address folded into a ROM/RAM whose size is not a power of two (the upper part mirrors within itself). */
+    static int mirror(int addr, int size) {
         if (size == 0) return 0;
         int base = 0, mask = 1 << 23;
         while (addr >= size) {
