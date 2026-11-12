@@ -508,7 +508,7 @@ final class ControllerScreen extends JPanel {
         if (i.keyboard()) parts.add(t("dev.keyboard"));
         else {
             int d = assignedDevice(i.id());
-            if (d >= 0) parts.add("js" + d + " " + t(GamepadDevices.connected(d) ? "dev.connected" : "dev.notconnected"));
+            if (d >= 0) parts.add(GamepadDevices.label(d) + " " + t(GamepadDevices.connected(d) ? "dev.connected" : "dev.notconnected"));
             else parts.add(t("dev.notconnected"));
         }
         return String.join(" · ", parts);

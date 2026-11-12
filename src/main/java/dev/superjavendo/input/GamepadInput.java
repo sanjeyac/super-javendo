@@ -1,14 +1,9 @@
 package dev.superjavendo.input;
 
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 /**
- * Gamepad strategy using the Linux joystick API (/dev/input/js&lt;N&gt;), no native libraries.
+ * Gamepad strategy on top of a {@link GamepadBackend} (the Linux joystick API, or input4j on macOS and Windows).
  * Hot-plug aware: keeps looking for its device and reopens it after a disconnect.
  */
 public final class GamepadInput implements ControllerInput {
@@ -19,7 +14,7 @@ public final class GamepadInput implements ControllerInput {
 
     public GamepadInput(ControllerProfile profile) {
         this.profile = profile;
-        Thread t = new Thread(this::loop, "gamepad-js" + profile.deviceIndex);
+        Thread t = new Thread(this::loop, "gamepad-" + profile.deviceIndex);
         t.setDaemon(true);
         t.start();
     }
@@ -31,13 +26,14 @@ public final class GamepadInput implements ControllerInput {
     @Override public void close() { running = false; }
 
     private void loop() {
-        File dev = new File("/dev/input/js" + profile.deviceIndex);
+        GamepadBackend backend = GamepadBackends.current();
+        int index = profile.deviceIndex;
         while (running) {
-            if (!dev.exists() || !dev.canRead()) { sleep(2000); continue; }
-            System.out.println("Gamepad connected: " + dev + " as " + profile.name);
+            if (!backend.connected(index)) { sleep(2000); continue; }
+            System.out.println("Gamepad connected: " + backend.label(index) + " as " + profile.name);
             connected = true;
-            try (DataInputStream in = new DataInputStream(new FileInputStream(dev))) {
-                read(in);
+            try {
+                backend.read(index, sink(), () -> running);
             } catch (IOException e) {
                 // disconnected
             }
@@ -47,30 +43,31 @@ public final class GamepadInput implements ControllerInput {
         }
     }
 
-    /** Parses js_event records (8 bytes) until the stream ends. Package-private for tests. */
-    void read(DataInputStream in) throws IOException {
-        byte[] raw = new byte[8];
-        int buttons = 0;
-        int[] axis = new int[256];
-        while (running) {
-            in.readFully(raw);
-            ByteBuffer b = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN);
-            b.getInt(); // timestamp
-            short value = b.getShort();
-            int type = b.get() & 0x7F; // strip the "initial state" flag
-            int number = b.get() & 0xFF;
-            if (type == 1) {
+    /** Turns device events into the console button mask. Package-private for tests. */
+    GamepadBackend.Sink sink() {
+        return new GamepadBackend.Sink() {
+            private int buttons;
+            private final int[] axis = new int[256];
+
+            @Override public void button(int number, boolean down, boolean initial) {
                 Integer bit = profile.buttons.get(number);
-                if (bit != null) { if (value != 0) buttons |= bit; else buttons &= ~bit; }
-            } else if (type == 2) {
-                axis[number] = value;
+                if (bit != null) { if (down) buttons |= bit; else buttons &= ~bit; }
+                update();
             }
-            int m = buttons;
-            for (ControllerProfile.AxisBinding ab : profile.axes) {
-                if (ab.direction() * axis[ab.axis()] > profile.threshold) m |= ab.mask();
+
+            @Override public void axis(int number, int value, boolean initial) {
+                if (number >= 0 && number < axis.length) axis[number] = value;
+                update();
             }
-            mask = m;
-        }
+
+            private void update() {
+                int m = buttons;
+                for (ControllerProfile.AxisBinding ab : profile.axes) {
+                    if (ab.direction() * axis[ab.axis()] > profile.threshold) m |= ab.mask();
+                }
+                mask = m;
+            }
+        };
     }
 
     private static void sleep(long ms) {

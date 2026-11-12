@@ -93,7 +93,7 @@ public final class Bus implements Memory, Stateful {
             case 0x2137: t.latch(); return 0;
             case 0x213C: { int v = t.toggleH ? (t.latchedH >> 8) & 1 : t.latchedH & 0xFF; t.toggleH = !t.toggleH; return v; }
             case 0x213D: { int v = t.toggleV ? (t.latchedV >> 8) & 1 : t.latchedV & 0xFF; t.toggleV = !t.toggleV; return v; }
-            case 0x213F: t.toggleH = t.toggleV = false; return 0x03;
+            case 0x213F: t.toggleH = t.toggleV = false; return ppu.read(0x3F);   // STAT78: interlace field in bit 7
             case 0x2134: case 0x2135: case 0x2136: case 0x2138: case 0x2139: case 0x213A: case 0x213B: case 0x213E:
                 return ppu.read(off & 0xFF);
             case 0x2180: { int v = wram[wramAddr] & 0xFF; wramAddr = (wramAddr + 1) & 0x1FFFF; return v; }

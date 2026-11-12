@@ -173,7 +173,7 @@ public final class Spc700 implements Stateful {
             case 0xB0: branch(fC); return;
             case 0xD0: branch(!fZ); return;
             case 0xF0: branch(fZ); return;
-            case 0x2F: branch(true); return;
+            case 0x2F: { int off = (byte) fetch(); pc = (pc + off) & 0xFFFF; return; }   // BRA: 4 cycles in the table, no taken-branch penalty
 
             // ---- bit-test branches / SET1 / CLR1
             default:

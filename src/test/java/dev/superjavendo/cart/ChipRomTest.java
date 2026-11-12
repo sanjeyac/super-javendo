@@ -21,7 +21,7 @@ class ChipRomTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"dsp1_multiply", "dsp1_inverse", "dsp1_triangle", "dsp1_radius", "dsp1_range", "dsp1_rotate", "dsp1_multiply2", "dsp1_distance", "dsp1_polar", "dsp1_attitudeA", "dsp1_attitudeB", "dsp1_attitudeC", "dsp1_projection", "dsp1_raster", "dsp1_gyrate", "dsp1_projwide", "dsp1_projclip"})
+    @ValueSource(strings = {"dsp1_multiply", "dsp1_inverse", "dsp1_triangle", "dsp1_radius", "dsp1_range", "dsp1_rotate", "dsp1_multiply2", "dsp1_distance", "dsp1_polar", "dsp1_attitudeA", "dsp1_attitudeB", "dsp1_attitudeC", "dsp1_projection", "dsp1_raster", "dsp1_gyrate", "dsp1_projwide", "dsp1_projclip", "sdd1"})
     void matchesSnes9x(String name) throws Exception {
         Snes snes = new Snes(new Cartridge(resource(name + ".sfc")));
         for (int f = 0; f < 30; f++) snes.runFrame();

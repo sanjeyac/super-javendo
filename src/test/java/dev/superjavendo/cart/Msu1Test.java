@@ -109,4 +109,23 @@ class Msu1Test {
         assertNotEquals(0, m.read(0) & 0x10);   // still playing
         assertTrue(maxAfterEnd >= 4900);        // looped into the loud second half
     }
+
+    @Test void stateRoundTripResumesPlaybackAtTheSamePosition() throws Exception {
+        int[][] frames = new int[200][];
+        for (int i = 0; i < frames.length; i++) frames[i] = new int[]{i * 100, -i * 100};
+        Msu1 a = chip(new byte[4], 1, frames, 10);
+        selectTrack(a, 1);
+        a.write(7, 3);                                          // play + repeat
+        for (int i = 0; i < 40; i++) a.nextSample();
+        var bo = new java.io.ByteArrayOutputStream();
+        a.save(new dev.superjavendo.state.StateOut(bo));
+
+        Msu1 b = new Msu1(dir.resolve("game.sfc"));
+        b.load(new dev.superjavendo.state.StateIn(new java.io.ByteArrayInputStream(bo.toByteArray())));
+        assertEquals(a.read(0) & 0x30, b.read(0) & 0x30);       // still playing and repeating
+        a.nextSample(); b.nextSample();
+        // the fractional position between two PCM frames is not saved, so allow less than one frame step of difference
+        assertTrue(Math.abs(a.mixL - b.mixL) <= 150, a.mixL + " vs " + b.mixL);
+        assertTrue(Math.abs(a.mixR - b.mixR) <= 150, a.mixR + " vs " + b.mixR);
+    }
 }

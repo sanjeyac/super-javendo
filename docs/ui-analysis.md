@@ -171,7 +171,7 @@ Per la nuova UI serve un'interfaccia di sessione minima, ad esempio `EmulatorSes
 ## 6. Vincoli per la nuova UI
 
 **Java e build**
-- Il pom ha `maven.compiler.release=21`. Il JDK installato è OpenJDK 27.
+- Il pom ha `maven.compiler.release=25`. Il JDK installato è OpenJDK 27.
 - Build con Maven: `mvn -q package` produce `target/superjavendo.jar` con `mainClass` nel manifest. Nessuna dipendenza runtime; l'unica dipendenza è JUnit 5.11.4 (scope test).
 - **Risorse incluse:** solo i 4 profili in `src/main/resources/profiles/*.cfg`. Nessun font, icona o immagine; `Theme` usa `Font.SANS_SERIF`.
 - I test del frontend sono in `FrontendTest` (geometria della griglia, copertine, scansione).

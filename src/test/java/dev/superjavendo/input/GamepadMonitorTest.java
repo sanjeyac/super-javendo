@@ -18,13 +18,14 @@ class GamepadMonitorTest {
         List<String> got = new ArrayList<>();
         // device 99 does not exist, so the thread only waits; decode() is driven by hand
         GamepadMonitor m = new GamepadMonitor(99, 16000, (t, down) -> got.add(t + (down ? "↓" : "↑")));
-        m.decode(ev(1, 1, 3));
-        m.decode(ev(0, 1, 3));
-        m.decode(ev(-30000, 2, 7));
-        m.decode(ev(-30000, 2, 7));            // still past the threshold: no new event
-        m.decode(ev(5000, 2, 7));
-        m.decode(ev(30000, 2, 7));
-        m.decode(ev(1, 0x81, 4));              // initial state replay is ignored
+        GamepadBackend.Sink sink = m.sink();
+        JsBackend.decode(ev(1, 1, 3), sink);
+        JsBackend.decode(ev(0, 1, 3), sink);
+        JsBackend.decode(ev(-30000, 2, 7), sink);
+        JsBackend.decode(ev(-30000, 2, 7), sink);            // still past the threshold: no new event
+        JsBackend.decode(ev(5000, 2, 7), sink);
+        JsBackend.decode(ev(30000, 2, 7), sink);
+        JsBackend.decode(ev(1, 0x81, 4), sink);              // initial state replay is ignored
         m.close();
         assertEquals(List.of("BUTTON_3↓", "BUTTON_3↑", "AXIS_7-↓", "AXIS_7-↑", "AXIS_7+↓"), got);
     }

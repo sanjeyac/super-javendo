@@ -42,7 +42,7 @@ final class PadNav {
         while (true) {
             for (int d : GamepadDevices.present())
                 if (!monitors.containsKey(d)) {
-                    Map<String, String> tokens = tokensFor(d);
+                    Map<String, String> tokens = tokensFor(paths, d);
                     monitors.put(d, new GamepadMonitor(d, 12000, (token, down) -> {
                         String b = tokens.get(token);
                         if (b != null && down && enabled.getAsBoolean()) SwingUtilities.invokeLater(() -> press(b));
@@ -53,7 +53,7 @@ final class PadNav {
     }
 
     /** token (BUTTON_n / AXIS_n+) -> SNES button name, from the gamepad profiles assigned to the players on this device. */
-    private Map<String, String> tokensFor(int device) {
+    static Map<String, String> tokensFor(AppPaths paths, int device) {
         Map<String, String> out = new HashMap<>();
         ControllerAssignments as = new ControllerAssignments(paths.controllersFile());
         for (int p = 1; p <= ControllerAssignments.PLAYERS; p++)

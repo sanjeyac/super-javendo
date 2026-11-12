@@ -47,7 +47,7 @@ Runs **Street Fighter II (USA)** with graphics, parallax scrolling and audio.
 
 ## Requirements
 
-- JDK 21 or newer (developed with JDK 27)
+- JDK 25 or newer (developed with JDK 27)
 - Maven 3.9+
 - Linux (gamepad support uses the kernel joystick API; everything else is plain Java)
 

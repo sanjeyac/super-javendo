@@ -6,7 +6,6 @@ import java.awt.event.KeyEvent;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
-import java.io.EOFException;
 import java.util.List;
 import java.util.Map;
 
@@ -21,8 +20,8 @@ class GamepadInputTest {
 
     private static int run(ControllerProfile p, ByteArrayOutputStream o) throws Exception {
         GamepadInput g = new GamepadInput(p);
-        try { g.read(new DataInputStream(new ByteArrayInputStream(o.toByteArray()))); }
-        catch (EOFException expected) { }
+        DataInputStream in = new DataInputStream(new ByteArrayInputStream(o.toByteArray()));
+        JsBackend.parse(in, g.sink(), () -> { try { return in.available() > 0; } catch (java.io.IOException e) { return false; } });
         int m = g.poll();
         g.close();
         return m;

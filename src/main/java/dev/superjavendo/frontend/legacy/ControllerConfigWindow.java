@@ -152,7 +152,7 @@ public final class ControllerConfigWindow extends JFrame {
                 }
             });
         } else {
-            status.setText("Premi un pulsante sul joystick js" + device.getValue() + " (10 s)…");
+            status.setText("Premi un pulsante sul joystick " + dev.superjavendo.input.GamepadDevices.label((Integer) device.getValue()) + " (10 s)…");
             GamepadCapture.next((Integer) device.getValue(), 10_000,
                     tok -> SwingUtilities.invokeLater(() -> { file.add(button, tok); changed(); done(); }),
                     err -> SwingUtilities.invokeLater(() -> { status.setText(err); done(); }));

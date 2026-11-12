@@ -146,6 +146,13 @@ public final class Msu1 implements Stateful {
     private void selectTrackKeepingState(long pos) {
         boolean p = play, r = repeat;
         selectTrack();
-        if (!audioError) { audioPos = Math.min(pos, audioFrames); play = p; repeat = r; }
+        if (!audioError) {
+            // selectTrack() primed the interpolation with the first two frames of the track: prime it with the frames
+            // just before the saved position instead, or the first samples after a load would be a click.
+            audioPos = Math.max(0, Math.min(pos, audioFrames) - 2);
+            lastL = lastR = nextL = nextR = 0;
+            readFrame(); readFrame();
+            play = p; repeat = r;
+        }
     }
 }

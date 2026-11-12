@@ -18,7 +18,7 @@ input sul desktop, risultati riproducibili (~600 fps).
 | `compare.py` | confronta due PNG → stampa % pixel diversi e scrive una striscia `[nostro \| snes9x \| diff]` |
 | `pngio.py` | lettura/scrittura PNG con solo numpy+zlib (niente Pillow) |
 
-Dipendenze: `python3` + `numpy`, `java` 21+, jar compilato (`mvn -q package -DskipTests` → `target/superjavendo.jar`).
+Dipendenze: `python3` + `numpy`, `java` 25+, jar compilato (`mvn -q package -DskipTests` → `target/superjavendo.jar`).
 
 ## Convenzioni (importanti per confronti sensati)
 

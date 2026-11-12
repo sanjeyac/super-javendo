@@ -42,9 +42,10 @@ Per verificare la grafica senza toccare il desktop dell'utente: `--headless` + s
 
 ## Convenzioni
 
-- Java 21 come target, nessuna dipendenza runtime. Test con JUnit 5.
+- Java 25 (LTS) come target, nessuna dipendenza runtime. Test con JUnit 5.
 - **I test non devono dipendere dall'hardware** (es. un gamepad collegato): usare override `-pN`/profili tastiera e `@TempDir` per la config.
 - Test sulla config usano sempre `AppPaths(tempDir)`, mai la home vera.
+- Pad: `input/GamepadBackend` (interfaccia) con `JsBackend` (Linux, `/dev/input/js*`, default) e `Input4jBackend` (macOS/Windows, libreria input4j, **mai provato su hardware**); scelta in `GamepadBackends` (`-Dsuperjavendo.gamepad=js|input4j`). `GamepadInput/Monitor/Capture/Devices` non toccano più i file. Il jar è uno shade (manifest `Enable-Native-Access`).
 - Nuovi tipi di dispositivo: registrarli in `ControllerFactory` (strategy), non toccare `EmuWindow`.
 - Nuovi componenti con stato → implementare `Stateful` e incrementare `STATE_VERSION` se cambia il formato.
 
