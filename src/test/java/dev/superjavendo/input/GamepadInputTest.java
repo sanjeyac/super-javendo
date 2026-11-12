@@ -36,6 +36,25 @@ class GamepadInputTest {
         assertEquals(Joypad.B | Joypad.START | Joypad.L, run(pad, o));
     }
 
+    /** /dev/input/js* behaves like this: available() throws "Illegal seek", read() works. Polling it looked like a disconnect. */
+    @Test void parseDoesNotDependOnAvailable() throws Exception {
+        ByteArrayOutputStream o = new ByteArrayOutputStream();
+        ev(o, 1, 1, 0); ev(o, 1, 1, 7);
+        DataInputStream in = new DataInputStream(new java.io.FilterInputStream(new ByteArrayInputStream(o.toByteArray())) {
+            @Override public int available() throws java.io.IOException { throw new java.io.IOException("Illegal seek"); }
+        });
+        GamepadInput g = new GamepadInput(pad);
+        GamepadBackend.Sink sink = g.sink();
+        int[] events = {0};
+        JsBackend.parse(in, new GamepadBackend.Sink() {
+            @Override public void button(int n, boolean d, boolean i) { sink.button(n, d, i); events[0]++; }
+            @Override public void axis(int n, int v, boolean i) { sink.axis(n, v, i); }
+        }, () -> events[0] < 2);
+        assertEquals(2, events[0]);
+        assertEquals(Joypad.B | Joypad.START, g.poll());
+        g.close();
+    }
+
     @Test void releaseClearsButton() throws Exception {
         ByteArrayOutputStream o = new ByteArrayOutputStream();
         ev(o, 1, 1, 1); ev(o, 0, 1, 1);

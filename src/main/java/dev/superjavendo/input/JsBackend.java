@@ -36,16 +36,13 @@ public final class JsBackend implements GamepadBackend {
     }
 
     /**
-     * Parses js_event records (8 bytes) until the stream ends or {@code running} turns false. Polls {@code available()}
-     * so a closed reader stops without waiting for the next event. Package-private for tests.
+     * Parses js_event records (8 bytes) until {@code running} turns false or the stream ends. Reads block: do NOT poll
+     * {@code available()}, which throws "Illegal seek" on /dev/input/js* (and looked like a disconnect). The reader runs
+     * on a daemon thread, so a stop request takes effect on the next event. Package-private for tests.
      */
     static void parse(DataInputStream in, Sink sink, BooleanSupplier running) throws IOException {
         byte[] raw = new byte[8];
         while (running.getAsBoolean()) {
-            if (in.available() < 8) {
-                try { Thread.sleep(2); } catch (InterruptedException e) { return; }
-                continue;
-            }
             in.readFully(raw);
             decode(raw, sink);
         }
