@@ -224,6 +224,9 @@ final class LibraryScreen extends JPanel {
     }
 
     /** Re-applies the filters and redraws everything. */
+    /** A play session ended: the battery save may have new records. */
+    void reloadRecords() { detail.reloadRecords(); }
+
     void refresh() {
         sortBtn.setText(model.sort.label() + "    ");
         sortBtn.setPreferredSize(new Dimension(Math.max(170, sortBtn.getFontMetrics(Pal.ui(14, 1)).stringWidth(model.sort.label() + "    ") + 34), 44));

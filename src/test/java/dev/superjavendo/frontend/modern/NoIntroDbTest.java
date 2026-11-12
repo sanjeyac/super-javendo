@@ -40,4 +40,13 @@ class NoIntroDbTest {
         assertEquals(1, db.size());
         assertEquals("First", db.nameOf("12345678"));
     }
+
+    @Test void gamesWeKnowAreVerifiedEvenWithoutTheDatFile() {
+        NoIntroDb none = new NoIntroDb();
+        assertEquals(RomCatalog.NoIntro.VERIFIED, RomCatalog.statusOf(none, "AA0E31DE"));          // F-Zero (USA), from its class
+        assertEquals("F-Zero (USA)", RomCatalog.datName(none, "AA0E31DE"));
+        assertEquals(RomCatalog.NoIntro.VERIFIED, RomCatalog.statusOf(null, "aa0e31de"));
+        assertEquals(RomCatalog.NoIntro.NO_DAT, RomCatalog.statusOf(none, "00000001"));            // nobody can tell
+        assertEquals(RomCatalog.NoIntro.NO_DAT, RomCatalog.statusOf(none, null));
+    }
 }

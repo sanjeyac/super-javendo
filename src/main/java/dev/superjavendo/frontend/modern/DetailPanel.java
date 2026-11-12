@@ -3,6 +3,9 @@ package dev.superjavendo.frontend.modern;
 import static dev.superjavendo.i18n.I18n.t;
 
 import dev.superjavendo.config.AppPaths;
+import dev.superjavendo.games.GameSupport;
+import dev.superjavendo.games.Games;
+import dev.superjavendo.games.Records;
 
 import javax.swing.*;
 import java.awt.*;
@@ -22,6 +25,9 @@ final class DetailPanel extends JComponent implements Scrollable {
     private final java.util.function.Predicate<Game> running;
     private Game game;
     private Covers.Slot[] slots;
+    private Records records;                // game-specific records from the battery save; null = none / not a known game
+    private GameSupport known;
+    private boolean recordsLoaded;
 
     private Runnable onPlay = () -> { }, onStar = () -> { }, onAssignCover = () -> { };
     private java.util.function.IntConsumer onResume = s -> { };
@@ -57,9 +63,26 @@ final class DetailPanel extends JComponent implements Scrollable {
     void setGame(Game g) {
         game = g;
         slots = null;
+        reloadRecords();
         revalidate();
         repaint();
         if (g != null) covers.loadSlots(g.path(), s -> SwingUtilities.invokeLater(() -> { if (game == g) { slots = s; repaint(); } }));
+    }
+
+    /** Re-reads the records from the game's save file (after a play session the save has changed). */
+    void reloadRecords() {
+        records = null;
+        known = null;
+        recordsLoaded = false;
+        repaint();
+    }
+
+    /** Resolved lazily because the CRC32 can arrive after the game is selected. The save is 2 KB: reading it here is cheap. */
+    private void ensureRecords() {
+        if (recordsLoaded || game == null || game.crc32() == null) return;
+        recordsLoaded = true;
+        known = Games.byCrc(game.crc32()).filter(GameSupport::hasRecords).orElse(null);
+        records = known == null ? null : known.records(game.path()).filter(r -> !r.isEmpty()).orElse(null);
     }
 
     @Override public Dimension getPreferredSize() { return new Dimension(340, contentH); }
@@ -133,6 +156,9 @@ final class DetailPanel extends JComponent implements Scrollable {
         data(g2, t("field.lastplayed"), Ui.lastPlayed(model.lastPlayed(game)), PAD, y, half);
         data(g2, t("field.playtime"), Ui.playTime(model.playSeconds(game)), PAD + half, y, half);
         y += 62;
+        // ---- records read from the battery save (only for games we know)
+        ensureRecords();
+        if (known != null) y = paintRecords(g2, y, cw);
         // ---- save states
         Ui.label(g2, t("detail.states"), PAD, y);
         int have = 0;
@@ -184,6 +210,34 @@ final class DetailPanel extends JComponent implements Scrollable {
         y += PAD;
         if (y != contentH) { contentH = y; SwingUtilities.invokeLater(this::revalidate); }
         g2.dispose();
+    }
+
+    private int paintRecords(Graphics2D g2, int y, int cw) {
+        Ui.label(g2, t("detail.records"), PAD, y);
+        y += 14;
+        if (records == null) {
+            Ui.fillRound(g2, PAD, y, cw, 44, 10, Pal.CARD, Pal.CARD_LINE);
+            Ui.text(g2, t("records.none"), PAD + 16, y + 27, Pal.ui(13, 0), Pal.TXT3);
+            return y + 44 + 24;
+        }
+        int h = 24 + 14;                                 // header baseline + room under the last row
+        for (Records.Group gr : records.groups()) h += 24 + 22 * gr.rows().size();
+        Ui.fillRound(g2, PAD, y, cw, h, 10, Pal.CARD, Pal.CARD_LINE);
+        // value columns share the right part of the card, left-aligned: header and values start at the same x
+        int n = records.columns().size(), x0 = PAD + cw * 46 / 100, colW = (PAD + cw - x0) / Math.max(1, n), ty = y + 24;
+        Font hf = Pal.ui(11, 2);
+        for (int c = 0; c < n; c++) Ui.text(g2, t(records.columns().get(c)), x0 + c * colW, ty, hf, Pal.TXT3);
+        for (Records.Group gr : records.groups()) {
+            ty += 24;
+            Ui.text(g2, gr.title(), PAD + 14, ty, Pal.ui(12, 2), Pal.ACCENT_L);
+            for (Records.Row r : gr.rows()) {
+                ty += 22;
+                Ui.text(g2, Ui.ellipsize(g2.getFontMetrics(Pal.ui(13, 0)), r.label(), x0 - PAD - 24), PAD + 14, ty, Pal.ui(13, 0), Pal.TXT);
+                for (int c = 0; c < n; c++)
+                    if (r.values().get(c) != null) Ui.text(g2, r.values().get(c), x0 + c * colW, ty, Pal.mono(13), c == 0 ? Pal.TXT : Pal.TXT2);
+            }
+        }
+        return y + h + 30;
     }
 
     private void data(Graphics2D g, String label, String value, int x, int y, int w) { data(g, label, value, x, y, w, Pal.TXT); }

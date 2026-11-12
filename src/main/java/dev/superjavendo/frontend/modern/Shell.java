@@ -220,6 +220,7 @@ public final class Shell extends JPanel {
                         user.recordSession(g.path(), since, System.currentTimeMillis());
                         updateRunning();
                         library.refresh();
+                        library.reloadRecords();
                     });
                 }
             });

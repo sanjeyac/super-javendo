@@ -74,6 +74,8 @@ class GamepadBackendTest {
         assertInstanceOf(Input4jBackend.class, GamepadBackends.choose("", "Windows 11"));
         assertInstanceOf(Input4jBackend.class, GamepadBackends.choose("input4j", "Linux"));
         assertInstanceOf(JsBackend.class, GamepadBackends.choose(" JS ", "Windows 11"));
+        assertFalse(GamepadBackends.choose("none", "Linux").connected(0));
+        assertTrue(GamepadBackends.choose("none", "Linux").present().isEmpty());
     }
 
     @Test void input4jWithoutPadsDegradesToNothing() {

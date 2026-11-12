@@ -50,8 +50,7 @@ final class LibraryData {
 
     /** Whether the CRC32 of the file is a verified dump in the No-Intro DAT; NO_DAT if there is no DAT or the CRC is not known yet. */
     RomCatalog.NoIntro noIntroStatus(Game g) {
-        if (noIntro.size() == 0 || g.crc32() == null) return RomCatalog.NoIntro.NO_DAT;
-        return noIntro.nameOf(g.crc32()) != null ? RomCatalog.NoIntro.VERIFIED : RomCatalog.NoIntro.NOT_VERIFIED;
+        return RomCatalog.statusOf(noIntro, g.crc32());
     }
     RomCatalog catalog() { return catalog; }
     MetaDb metadata() { return db; }

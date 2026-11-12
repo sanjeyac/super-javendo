@@ -2,6 +2,7 @@ package dev.superjavendo.frontend.modern;
 
 import static dev.superjavendo.i18n.I18n.t;
 
+import dev.superjavendo.games.Games;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -67,13 +68,26 @@ public final class RomCatalog {
                 else if (metadataLoaded && !meta) st = Status.UNKNOWN;
                 else if (!cover) st = Status.NO_COVER;
                 else st = Status.OK;
-                String dat = noIntro == null || noIntro.size() == 0 ? null : noIntro.nameOf(g.crc32());
-                NoIntro ni = noIntro == null || noIntro.size() == 0 || g.crc32() == null ? NoIntro.NO_DAT
-                        : dat != null ? NoIntro.VERIFIED : NoIntro.NOT_VERIFIED;
+                String dat = datName(noIntro, g.crc32());
+                NoIntro ni = statusOf(noIntro, g.crc32());
                 out.add(new Row(g, st, cover, meta, hidden, isMain, e.getValue().size(), ni, dat));
             }
         }
         rows = out;
+    }
+
+    /** The No-Intro name of the dump: from the game classes ({@link Games}, no file needed), else from the DAT. */
+    static String datName(NoIntroDb db, String crc) {
+        if (crc == null) return null;
+        String own = Games.dumpName(crc);
+        return own != null ? own : db == null ? null : db.nameOf(crc);
+    }
+
+    /** VERIFIED if the dump is known (by a game class or the DAT); NO_DAT only if nothing can tell (no CRC yet, or no DAT and not one of our games). */
+    static NoIntro statusOf(NoIntroDb db, String crc) {
+        if (crc == null) return NoIntro.NO_DAT;
+        if (datName(db, crc) != null) return NoIntro.VERIFIED;
+        return db == null || db.size() == 0 ? NoIntro.NO_DAT : NoIntro.NOT_VERIFIED;
     }
 
     public List<Row> rows() { return rows; }

@@ -36,7 +36,7 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.5.2</version>
         <configuration>
-          <argLine>@{argLine} -Djava.awt.headless=true</argLine>
+          <argLine>@{argLine} -Djava.awt.headless=true -Dsuperjavendo.gamepad=none</argLine>
         </configuration>
       </plugin>
       <plugin>
