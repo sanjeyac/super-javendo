@@ -6,6 +6,7 @@ import dev.superjavendo.input.ControllerConfig;
 import dev.superjavendo.input.ControllerFactory;
 import dev.superjavendo.input.ControllerInput;
 import dev.superjavendo.input.ControllerPorts;
+import dev.superjavendo.movie.Movie;
 import dev.superjavendo.ppu.Ppu;
 
 import javax.swing.*;
@@ -189,6 +190,15 @@ public final class EmuWindow extends JFrame {
     private void shutdown() {
         if (!running) return;
         running = false;
+        movieRequest = 0;
+        Movie m = recording; recording = null; playing = null;   // closing the window ends the run: keep what was recorded
+        if (m != null && m.length() > 0) {
+            try {
+                Path f = saveMovie(m, String.format("%08x", Movie.crcOf(snes)));
+                System.out.println("Movie saved: " + f);
+            } catch (java.io.IOException ex) { System.err.println("Movie not saved: " + ex.getMessage()); }
+        }
+        restoreSram();
         ports.close();
         snes.cart.saveSram(sramFile);
         audio.close();
@@ -201,11 +211,17 @@ public final class EmuWindow extends JFrame {
         while (running) {
             if (resetRequest) {
                 resetRequest = false;
+                if (playing != null) { show(I18n.t("movie.noreset")); }
+                else {
+                if (recording != null) pendingReset = true;
                 Snes fresh = new Snes(snes.cart);
                 fresh.bus.apu.setSink(audio);
                 snes = fresh;
                 show(I18n.t("game.reset"));
+                }
             }
+            int mreq = movieRequest;
+            if (mreq != 0) { movieRequest = 0; handleMovie(mreq); }
             int act = ports.actions(), rising = act & ~prevActions;
             prevActions = act;
             if ((rising & ControllerInput.SAVE_STATE) != 0) stateRequest = 1;       // slot 0
@@ -213,8 +229,9 @@ public final class EmuWindow extends JFrame {
             int req = stateRequest;
             if (req != 0) { stateRequest = 0; handleState(req); }
             if (paused) { sleep(20); next = System.nanoTime(); SwingUtilities.invokeLater(this::repaint); continue; }
-            ports.apply(snes.joypad);
+            stepInput();
             snes.runFrame();
+            afterFrame();
             present();
             audio.flush();
             SwingUtilities.invokeLater(this::repaint);
@@ -251,8 +268,123 @@ public final class EmuWindow extends JFrame {
         } else System.arraycopy(ppu.outputPixels(), 0, ((DataBufferInt) img.getRaster().getDataBuffer()).getData(), 0, w * h);
     }
 
+    // ------------------------------------------------------------------ input movies (all on the emulation thread)
+
+    private volatile int movieRequest;          // 1 record/stop, 2 play/stop
+    private dev.superjavendo.movie.Movie recording, playing;
+    private int playPos;
+    private Path playingFile;
+    private boolean pendingReset;
+    private byte[] sramBackup;
+
+    /** Movies start from power-on with empty battery RAM, so the run can be reproduced anywhere. */
+    private void beginMovie() {
+        sramBackup = snes.cart.sram.clone();
+        java.util.Arrays.fill(snes.cart.sram, (byte) 0);
+        Snes fresh = new Snes(snes.cart);
+        fresh.bus.apu.setSink(audio);
+        snes = fresh;
+        pendingReset = false;
+    }
+
+    private void restoreSram() {
+        if (sramBackup != null) { System.arraycopy(sramBackup, 0, snes.cart.sram, 0, sramBackup.length); sramBackup = null; }
+    }
+
+    /** Puts the console back to a clean power-on with the player's own saves. */
+    private void endMovieMode() {
+        restoreSram();
+        Snes fresh = new Snes(snes.cart);
+        fresh.bus.apu.setSink(audio);
+        snes = fresh;
+    }
+
+    private Path movieDir() { return AppPaths.forCurrentUser().moviesDir(); }
+
+    private Path saveMovie(Movie m, String crc) throws java.io.IOException {
+        m.endHash = Movie.pictureHash(snes);
+        Path f = new dev.superjavendo.movie.Movies(movieDir()).newFile(Movie.crcOf(snes));
+        m.save(f);
+        return f;
+    }
+
+    /** Starts recording from power-on as soon as the emulation thread is up (command line {@code --record}). */
+    public void requestRecording() { movieRequest = 1; }
+
+    private volatile Path playbackFile;
+
+    /** Replays a given movie file right away (command line {@code --movie}). */
+    public void requestPlayback(Path file) { playbackFile = file; movieRequest = 2; }
+
+    private void handleMovie(int req) {
+        String crc = String.format("%08x", dev.superjavendo.movie.Movie.crcOf(snes));
+        try {
+            if (recording != null) {
+                Movie m = recording; recording = null;
+                Path f = saveMovie(m, crc);
+                endMovieMode();
+                show(I18n.t("movie.saved", String.format("%.1f", m.seconds()), f.getFileName()));
+            } else if (playing != null) {
+                playing = null;
+                endMovieMode();
+                show(I18n.t("movie.stopped"));
+            } else if (req == 1) {
+                beginMovie();
+                recording = new Movie(Movie.crcOf(snes), snes.cart.title);
+                show(I18n.t("movie.recording"));
+            } else {
+                Path latest = playbackFile;
+                playbackFile = null;
+                if (latest == null) {
+                    var all = new dev.superjavendo.movie.Movies(movieDir()).list(Movie.crcOf(snes));
+                    latest = all.isEmpty() ? null : all.get(0).file();
+                }
+                if (latest == null) { show(I18n.t("movie.none")); return; }
+                Movie m = Movie.load(latest);
+                if (m.romCrc != Movie.crcOf(snes)) { show(I18n.t("movie.wrongrom")); return; }
+                beginMovie();
+                playing = m; playPos = 0; playingFile = latest;
+                show(I18n.t("movie.playing", String.format("%.1f", m.seconds())));
+            }
+        } catch (Exception ex) {
+            recording = null; playing = null;
+            show(I18n.t("movie.fail", ex.getMessage()));
+        }
+    }
+
+    /** Feeds the console its pads for the next frame: the movie while replaying, the live pads otherwise (and records them). */
+    private void stepInput() {
+        if (playing != null && playPos < playing.length()) {
+            int a = playing.pad1(playPos), b = playing.pad2(playPos);
+            if ((a & Movie.RESET) != 0) { Snes fresh = new Snes(snes.cart); fresh.bus.apu.setSink(audio); snes = fresh; }
+            snes.joypad.setButtons(0, a);
+            snes.joypad.setButtons(1, b);
+            playPos++;
+            return;
+        }
+        ports.apply(snes.joypad);
+        if (recording != null) {
+            int a = ports.get(0).poll() & 0xFFF0, b = ports.get(1).poll() & 0xFFF0;
+            recording.append(a | (pendingReset ? Movie.RESET : 0), b);
+            pendingReset = false;
+        }
+    }
+
+    private void afterFrame() {
+        if (playing != null && playPos >= playing.length()) {
+            Movie m = playing; playing = null;
+            boolean ok = m.endHash == 0 || m.endHash == Movie.pictureHash(snes);
+            show(I18n.t(ok ? "movie.verified" : "movie.desync"));
+            if (playingFile != null && m.endHash != 0) {        // remember the result in the movie's header
+                try { new dev.superjavendo.movie.Movies(movieDir()).setVerified(playingFile, ok); } catch (java.io.IOException ignored) { }
+            }
+            restoreSram();                                  // the console stays where the run ended; the player's saves are back
+        }
+    }
+
     private void handleState(int request) {
         int req = request & 3, slot = request >> 2;
+        if ((req == 2) && (recording != null || playing != null)) { recording = null; playing = null; endMovieMode(); show(I18n.t("movie.stopped")); return; }
         Path stateFile = stateFiles.apply(slot);
         String tag = " (" + I18n.t("game.slot", slot) + ")";
         try {

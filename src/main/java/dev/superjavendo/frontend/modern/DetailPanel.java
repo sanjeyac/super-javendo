@@ -32,7 +32,10 @@ final class DetailPanel extends JComponent implements Scrollable {
     private Runnable onPlay = () -> { }, onStar = () -> { }, onAssignCover = () -> { };
     private java.util.function.IntConsumer onResume = s -> { };
     private final Rectangle[] slotRects = new Rectangle[AppPaths.MAX_SLOT + 1];
-    private Rectangle playRect = new Rectangle(), starRect = new Rectangle(), resumeRect = new Rectangle(), assignRect = new Rectangle();
+    private Rectangle playRect = new Rectangle(), starRect = new Rectangle(), resumeRect = new Rectangle(), assignRect = new Rectangle(), recRect = new Rectangle(), replayRect = new Rectangle();
+    private Runnable onRec = () -> { }, onReplay = () -> { };
+    private java.util.function.ToIntFunction<Game> movieCount = g -> 0;
+    private int replays = -1;              // recordings of this game; -1 = not counted yet
     private int contentH = 600;
 
     DetailPanel(Covers covers, LibraryModel model, java.util.function.Predicate<Game> running) {
@@ -48,6 +51,8 @@ final class DetailPanel extends JComponent implements Scrollable {
                 for (int s = 0; s < slotRects.length; s++)
                     if (slotRects[s] != null && slotRects[s].contains(e.getPoint()) && slots != null && slots[s].exists()) { onResume.accept(s); return; }
                 if (playRect.contains(e.getPoint())) onPlay.run();
+                else if (recRect.contains(e.getPoint())) onRec.run();
+                else if (replayRect.contains(e.getPoint()) && replays > 0) onReplay.run();
                 else if (starRect.contains(e.getPoint())) onStar.run();
                 else if (assignRect.contains(e.getPoint())) onAssignCover.run();
             }
@@ -58,11 +63,17 @@ final class DetailPanel extends JComponent implements Scrollable {
     /** A save state was chosen (the "Resume" link or one of the slot thumbnails): argument = slot. */
     void onResume(java.util.function.IntConsumer r) { onResume = r; }
     void onStar(Runnable r) { onStar = r; }
+    /** "Rec mode": start the game recording a movie. */
+    void onRec(Runnable r) { onRec = r; }
+    /** "Replay": choose one of the game's recordings. */
+    void onReplay(Runnable r) { onReplay = r; }
+    void movieCount(java.util.function.ToIntFunction<Game> f) { movieCount = f; }
     void onAssignCover(Runnable r) { onAssignCover = r; }
 
     void setGame(Game g) {
         game = g;
         slots = null;
+        replays = -1;
         reloadRecords();
         revalidate();
         repaint();
@@ -74,6 +85,7 @@ final class DetailPanel extends JComponent implements Scrollable {
         records = null;
         known = null;
         recordsLoaded = false;
+        replays = -1;
         repaint();
     }
 
@@ -104,7 +116,7 @@ final class DetailPanel extends JComponent implements Scrollable {
         int w = getWidth();
         g2.setColor(Pal.SIDE);
         g2.fillRect(0, 0, w, getHeight());
-        playRect = starRect = resumeRect = assignRect = new Rectangle();
+        playRect = starRect = resumeRect = assignRect = recRect = replayRect = new Rectangle();
         if (game == null) {
             Ui.text(g2, t("detail.none"), PAD, 60, Pal.ui(14, 0), Pal.TXT3);
             g2.dispose();
@@ -147,7 +159,27 @@ final class DetailPanel extends JComponent implements Scrollable {
         Ui.fillRound(g2, starRect.x, starRect.y, 48, 48, 10, Pal.CARD, Pal.CARD_LINE);
         boolean fav = model.favorite(game);
         Ui.star(g2, starRect.x + 24, starRect.y + 24.5, 10, fav, fav ? Pal.STAR : Pal.TXT);
-        y += 48 + 24;
+        y += 48 + 10;
+        // ---- input movies: record a run from power-on / pick a recording to replay
+        if (replays < 0 && game.crc32() != null) replays = movieCount.applyAsInt(game);
+        int bw = (cw - 8) / 2, bh = 36;
+        recRect = new Rectangle(PAD, y, bw, bh);
+        replayRect = new Rectangle(PAD + bw + 8, y, cw - bw - 8, bh);
+        Ui.fillRound(g2, recRect.x, recRect.y, bw, bh, 10, Pal.CARD, Pal.CARD_LINE);
+        g2.setColor(new Color(0xff5a64));
+        g2.fillOval(recRect.x + 18, y + bh / 2 - 5, 10, 10);
+        Font bf = Pal.ui(14, 1);
+        FontMetrics bm = g2.getFontMetrics(bf);
+        Ui.text(g2, t("detail.rec"), recRect.x + 36, y + (bh + bm.getAscent() - bm.getDescent()) / 2, bf, Pal.TXT);
+        boolean canReplay = replays > 0;
+        Ui.fillRound(g2, replayRect.x, replayRect.y, replayRect.width, bh, 10, Pal.CARD, Pal.CARD_LINE);
+        Color rc = canReplay ? Pal.TXT : Pal.TXT3;
+        g2.setColor(rc);
+        int rx = replayRect.x + 18;
+        g2.fillPolygon(new int[]{rx, rx, rx + 9}, new int[]{y + bh / 2 - 5, y + bh / 2 + 5, y + bh / 2}, 3);
+        String rt = t("detail.replay") + (canReplay ? "  " + replays : "");
+        Ui.text(g2, Ui.ellipsize(bm, rt, replayRect.width - 50), rx + 18, y + (bh + bm.getAscent() - bm.getDescent()) / 2, bf, rc);
+        y += bh + 24;
         int half = cw / 2;
         data(g2, t("field.genre"), game.genre().isEmpty() ? "—" : game.genre(), PAD, y, half);
         RomCatalog.NoIntro ni = model.noIntro(game);

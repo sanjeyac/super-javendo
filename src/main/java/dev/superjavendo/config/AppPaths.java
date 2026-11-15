@@ -112,6 +112,9 @@ public final class AppPaths {
         return dirs;
     }
 
+    /** Input movies (speedrun recordings), one file per run. */
+    public Path moviesDir() { return configDir.resolve("movies"); }
+
     public Path statesDir() { return configDir.resolve("states"); }
 
     /** Save-state file of a ROM: <code>states/&lt;rom name without extension&gt;.state</code>. */

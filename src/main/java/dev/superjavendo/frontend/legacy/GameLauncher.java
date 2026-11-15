@@ -25,6 +25,11 @@ public final class GameLauncher {
 
     /** @param resumeSlot save-state slot to load right after starting (0 = quick slot), or -1 to start from power-on */
     public static EmuWindow open(Path rom, Map<Integer, String> profiles, boolean exitOnClose, int resumeSlot) throws Exception {
+        return open(rom, profiles, exitOnClose, resumeSlot, false, null);
+    }
+
+    /** @param record start recording an input movie from power-on right away */
+    public static EmuWindow open(Path rom, Map<Integer, String> profiles, boolean exitOnClose, int resumeSlot, boolean record, Path movie) throws Exception {
         AppPaths paths = AppPaths.forCurrentUser();
         Cartridge cart = Cartridge.load(rom);
         String name = rom.getFileName().toString();
@@ -39,7 +44,9 @@ public final class GameLauncher {
         Runnable create = () -> ref.set(new EmuWindow(snes, srm, slot -> paths.stateFile(rom, slot), profiles, exitOnClose));
         if (SwingUtilities.isEventDispatchThread()) create.run();
         else SwingUtilities.invokeAndWait(create);
-        if (resumeSlot >= 0) ref.get().requestLoadSlot(resumeSlot);
+        if (movie != null) ref.get().requestPlayback(movie);
+        else if (record) ref.get().requestRecording();
+        else if (resumeSlot >= 0) ref.get().requestLoadSlot(resumeSlot);
         return ref.get();
     }
 }

@@ -119,6 +119,9 @@ final class LibraryScreen extends JPanel {
         grid.onStar(this::toggleFavorite);
         list.onStar(this::toggleFavorite);
         detail.onPlay(() -> { if (current != null) shell.play(current); });
+        detail.movieCount(g -> g.crc32() == null ? 0 : shell.movies().list(Integer.parseUnsignedInt(g.crc32(), 16)).size());
+        detail.onRec(() -> { if (current != null) shell.confirmRecord(current); });
+        detail.onReplay(() -> { if (current != null) { new ReplayDialog(shell, current).show(); detail.reloadRecords(); } });
         detail.onResume(slot -> { if (current != null) shell.play(current, slot); });
         detail.onStar(() -> { if (current != null) toggleFavorite(current); });
         detail.onAssignCover(() -> { if (current != null) shell.showRomManager(current); });

@@ -76,6 +76,22 @@ public final class Shell extends JPanel {
     /** The undo stack of the user's reversible actions (favourites, hide/show, main file). */
     UndoStack undo() { return undo; }
 
+    /** The folder of input movies. */
+    dev.superjavendo.movie.Movies movies() { return new dev.superjavendo.movie.Movies(paths.moviesDir()); }
+
+    AppPaths paths() { return paths; }
+
+    /** Rec mode: the first time, explains that a recording starts from power-on with empty battery RAM. */
+    void confirmRecord(Game g) {
+        java.nio.file.Path seen = paths.moviesDir().resolve(".hint-seen");
+        if (!java.nio.file.Files.exists(seen)) {
+            int r = JOptionPane.showConfirmDialog(this, t("movie.hint"), t("movie.hint.title"), JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE);
+            if (r != JOptionPane.OK_OPTION) return;
+            try { java.nio.file.Files.createDirectories(seen.getParent()); java.nio.file.Files.writeString(seen, ""); } catch (java.io.IOException ignored) { }
+        }
+        record(g);
+    }
+
     /** Ctrl+Z undoes, Ctrl+Shift+Z or Ctrl+Y redoes (Cmd on macOS); not while the controller screen waits for an input. */
     private void installUndoKeys() {
         int mask = shortcutMask();
@@ -106,12 +122,13 @@ public final class Shell extends JPanel {
     }
 
     /** A short message in the top bar that disappears by itself. */
-    private void say(String text) {
+    void say(String text) {
         notice.setText(text);
         noticeTimer.restart();
     }
 
     private void padAction(String b) {
+        if (KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow() instanceof JDialog) return;   // a dialog is open: it handles its own keys
         if (library.isShowing()) library.padAction(b);
     }
 
@@ -245,12 +262,21 @@ public final class Shell extends JPanel {
     void play(Game g) { play(g, -1); }
 
     /** Starts the game, loading the given save-state slot right away (-1 = from power-on). A game already running just loads it. */
-    void play(Game g, int resumeSlot) {
+    void play(Game g, int resumeSlot) { play(g, resumeSlot, false, null); }
+
+    /** Starts the game recording an input movie from power-on. */
+    void record(Game g) { play(g, -1, true, null); }
+
+    /** Starts the game replaying a recorded movie. */
+    void replay(Game g, java.nio.file.Path movie) { play(g, -1, false, movie); }
+
+    private void play(Game g, int resumeSlot, boolean record, java.nio.file.Path movie) {
         if (g == null) return;
-        if (isRunning(g)) { running.toFront(); if (resumeSlot >= 0) running.requestLoadSlot(resumeSlot); return; }
+        if (isRunning(g) && (record || movie != null)) closeRunning();     // a movie must start from power-on: restart the game
+        else if (isRunning(g)) { running.toFront(); if (resumeSlot >= 0) running.requestLoadSlot(resumeSlot); return; }
         closeRunning();
         try {
-            EmuWindow w = GameLauncher2.open(g.path(), profiles, resumeSlot);
+            EmuWindow w = GameLauncher2.open(g.path(), profiles, resumeSlot, record, movie);
             running = w;
             runningGame = g;
             runningSince = System.currentTimeMillis();

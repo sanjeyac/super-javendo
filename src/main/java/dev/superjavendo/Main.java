@@ -66,6 +66,9 @@ public final class Main {
         boolean legacy = false;
         String wav = null;
         String everyPrefix = null;
+        String movieFile = null;
+        boolean record = false;
+        String playFile = null;
         List<int[]> presses = new ArrayList<>();
         Map<Integer, String> profiles = new java.util.TreeMap<>();
         for (int i = 0; i < args.length; i++) {
@@ -76,6 +79,9 @@ public final class Main {
                 case "--shot": shot = args[++i]; break;
                 case "--layers": layerMask = Integer.parseInt(args[++i], 16); break;
                 case "--dump": dump = true; break;
+                case "--record": record = true; break;
+                case "--verify": movieFile = args[++i]; break;
+                case "--movie": playFile = args[++i]; break;
                 case "--wav": wav = args[++i]; break;
                 case "--every": every = Integer.parseInt(args[++i]); everyPrefix = args[++i]; break;
                 case "-p1": case "-p2": case "-p3": case "-p4":
@@ -89,22 +95,22 @@ public final class Main {
                 default: rom = Path.of(args[i]);
             }
         }
-        if (rom == null && headlessFrames < 0 && !legacy) {
+        if (rom == null && headlessFrames < 0 && movieFile == null && !legacy) {
             SwingUtilities.invokeLater(() -> new dev.superjavendo.frontend.modern.Shell(dev.superjavendo.config.AppPaths.forCurrentUser(), profiles).window().setVisible(true));
             return;
         }
-        if (rom == null && headlessFrames < 0) {
+        if (rom == null && headlessFrames < 0 && movieFile == null) {
             SwingUtilities.invokeLater(() -> new dev.superjavendo.frontend.legacy.LauncherWindow(profiles).setVisible(true));
             return;
         }
-        if (headlessFrames < 0) {
+        if (headlessFrames < 0 && movieFile == null) {
             try {
                 dev.superjavendo.input.ControllerConfig.check(AppPaths.forCurrentUser(), profiles);
             } catch (IllegalArgumentException e) {
                 System.err.println(e.getMessage());
                 System.exit(2);
             }
-            dev.superjavendo.frontend.legacy.GameLauncher.open(rom, profiles, true);
+            dev.superjavendo.frontend.legacy.GameLauncher.open(rom, profiles, true, -1, record, playFile == null ? null : Path.of(playFile));
             return;
         }
         Cartridge cart = Cartridge.load(rom);
@@ -116,6 +122,15 @@ public final class Main {
         System.out.printf("Title: %s | %s | Chip: %s | ROM %d KB | SRAM %d KB | checksum %s | reset $%04X%n",
                 cart.title, cart.mapping, cart.chip.label, cart.rom.length / 1024, cart.sram.length / 1024,
                 cart.checksumValid ? "ok" : "bad", cart.resetVector);
+        if (movieFile != null) {                     // --verify FILE [--shot out.png]: verify a recorded run, no window
+            dev.superjavendo.movie.Movie m = dev.superjavendo.movie.Movie.load(Path.of(movieFile));
+            Snes[] last = new Snes[1];
+            var r = dev.superjavendo.movie.Replay.run(cart, m, s -> last[0] = s);
+            System.out.printf("Movie: %d frames (%.1f s) | final picture %08X | %s%n", r.frames(), m.seconds(), r.hash(),
+                    r.matches() ? "MATCH" : "MISMATCH (expected " + String.format("%08X", m.endHash) + ")");
+            if (shot != null && last[0] != null) save(last[0], shot);
+            System.exit(r.matches() ? 0 : 1);
+        }
         Snes snes = new Snes(cart);
 
         snes.bus.ppu.debugMask = layerMask;

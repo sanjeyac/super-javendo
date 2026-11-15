@@ -71,7 +71,9 @@ final class PadNav {
 
     private void press(String b) {
         Window w = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
-        if (w == null || !(w instanceof javax.swing.JFrame f) || !f.getTitle().equals("Super Javendo")) return;   // only the frontend window
+        Window root = w;
+        while (root != null && root.getOwner() != null) root = root.getOwner();      // a dialog of the frontend counts as the frontend
+        if (w == null || !(root instanceof javax.swing.JFrame f) || !f.getTitle().equals("Super Javendo")) return;   // only the frontend window
         int key = switch (b) {
             case "up" -> KeyEvent.VK_UP;
             case "down" -> KeyEvent.VK_DOWN;

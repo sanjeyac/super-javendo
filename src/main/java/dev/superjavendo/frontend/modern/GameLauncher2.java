@@ -11,6 +11,10 @@ final class GameLauncher2 {
     private GameLauncher2() { }
 
     static EmuWindow open(Path rom, Map<Integer, String> profiles, int resumeSlot) throws Exception {
-        return GameLauncher.open(rom, profiles, false, resumeSlot);
+        return open(rom, profiles, resumeSlot, false, null);
+    }
+
+    static EmuWindow open(Path rom, Map<Integer, String> profiles, int resumeSlot, boolean record, Path movie) throws Exception {
+        return GameLauncher.open(rom, profiles, false, resumeSlot, record, movie);
     }
 }
