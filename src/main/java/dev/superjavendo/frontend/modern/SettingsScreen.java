@@ -154,6 +154,15 @@ final class SettingsScreen extends JPanel {
         hint.setBorder(new EmptyBorder(8, 0, 0, 0));
         hint.setAlignmentX(LEFT_ALIGNMENT);
         p.add(hint);
+        p.add(Box.createVerticalStrut(12));
+        p.add(rowLabel(t("set.recmem")));
+        List<Integer> mem = Settings.REC_MEMORY_MB;
+        p.add(chips(mem.stream().map(m -> m >= 1024 ? (m / 1024) + " GB" : m + " MB").toList(), Math.max(0, mem.indexOf(settings.recGreenzoneMb)), 5,
+                i -> { settings.recGreenzoneMb = mem.get(i); settings.save(); }));
+        JLabel memHint = Widgets.label("<html>" + t("set.recmemhint") + "</html>", Pal.ui(12, 0), Pal.TXT3);
+        memHint.setBorder(new EmptyBorder(8, 0, 0, 0));
+        memHint.setAlignmentX(LEFT_ALIGNMENT);
+        p.add(memHint);
         return p;
     }
 

@@ -23,6 +23,12 @@ public final class Settings {
     /** Start games in full screen (F11 toggles it in game, Esc leaves it). */
     public boolean fullscreen = false;
 
+    /** Memory the Rec editor may use for its snapshots (greenzone), in MB. */
+    public int recGreenzoneMb = 512;
+    public static final List<Integer> REC_MEMORY_MB = List.of(128, 256, 512, 1024, 2048);
+    /** What an edit in the past does to the later inputs: "keep" (re-emulate them) or "cut" (delete them). */
+    public String recPolicy = "keep";
+
     private final Path file;
 
     public Settings(Path file) { this.file = file; }
@@ -42,6 +48,8 @@ public final class Settings {
                     case "video.filter" -> { if (FILTERS.contains(v)) s.filter = v; }
                     case "video.scale" -> s.scale = clamp(v, MIN_SCALE, MAX_SCALE, s.scale);
                     case "video.fullscreen" -> s.fullscreen = v.equalsIgnoreCase("true") || v.equals("1");
+                    case "rec.greenzoneMb" -> s.recGreenzoneMb = clamp(v, 64, 8192, s.recGreenzoneMb);
+                    case "rec.policy" -> { if (v.equals("keep") || v.equals("cut")) s.recPolicy = v; }
                     case "audio.volume" -> s.volume = clamp(v, 0, 100, s.volume);
                     default -> { }
                 }
@@ -67,6 +75,8 @@ public final class Settings {
         mine.put("video.scale", "video.scale=" + scale);
         mine.put("video.fullscreen", "video.fullscreen=" + fullscreen + "     # start games in full screen");
         mine.put("audio.volume", "audio.volume=" + volume);
+        mine.put("rec.greenzoneMb", "rec.greenzoneMb=" + recGreenzoneMb + "     # memory of the Rec editor's snapshots");
+        mine.put("rec.policy", "rec.policy=" + recPolicy + "     # keep | cut: what an edit in the past does to later inputs");
         List<String> out = new ArrayList<>();
         try { if (Files.exists(file)) out.addAll(Files.readAllLines(file, StandardCharsets.UTF_8)); } catch (IOException ignored) { }
         if (out.isEmpty()) out.add("# SuperJavendo settings");
