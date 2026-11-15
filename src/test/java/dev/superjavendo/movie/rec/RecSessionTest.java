@@ -237,4 +237,34 @@ class RecSessionTest {
             assertEquals(a, s.view().ram()[0]);
         }
     }
+
+    @Test void playStepReplaysThenContinuesPastTheFrontier() {
+        Cartridge c = RecTestRom.readsPad();
+        try (RecSession s = session(c, 120, RecSessionTest::pad)) {
+            advance(s, 60);
+            assertTrue(s.seek(10));
+            for (int i = 0; i < 50; i++) assertTrue(s.playStep());
+            assertEquals(60, s.playhead());
+            assertEquals(60, s.frontier());
+            assertEquals(plainHash(c, 60, RecSessionTest::pad), s.consoleHash());
+            assertTrue(s.playStep());                       // at the frontier it emulates a new frame
+            assertEquals(61, s.frontier());
+            s.toggle(0, 5, Joypad.X);
+            assertFalse(s.playStep(), "no playback while frames are stale");
+        }
+    }
+
+    @Test void advanceToEqualsAdvancingOneByOne() {
+        Cartridge c = RecTestRom.readsPad();
+        try (RecSession s = session(c, 150, RecSessionTest::pad)) {
+            int[] last = {0};
+            s.advanceTo(150, n -> last[0] = n, null);
+            assertEquals(150, s.frontier());
+            assertEquals(150, last[0]);
+            assertEquals(plainHash(c, 150, RecSessionTest::pad), s.consoleHash());
+            assertTrue(s.greenzone().has(150));
+            assertTrue(s.seek(77));
+            assertEquals(plainHash(c, 77, RecSessionTest::pad), s.consoleHash());
+        }
+    }
 }

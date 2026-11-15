@@ -103,6 +103,44 @@ public final class RecSession implements AutoCloseable {
         return true;
     }
 
+    /**
+     * One frame of playback: replays the next valid frame, or emulates a new one at the frontier. Cheaper than
+     * {@link #seek} (no snapshot of every frame); false when there is nothing to play (stale frames, or the playhead is
+     * not at a place that can continue).
+     */
+    public boolean playStep() {
+        if (hasPending()) return false;
+        if (playhead >= frontier) return advance();
+        ensureConsoleAt(playhead);
+        runFrame(playhead);
+        playhead++;
+        captureVideo();
+        return true;
+    }
+
+    /**
+     * Emulates frames up to {@code target} at full speed (used to bring an opened movie to its end): the same as
+     * calling {@link #advance} that many times but without the per-frame cost of a snapshot.
+     */
+    public void advanceTo(int target, IntConsumer progress, BooleanSupplier cancelled) {
+        if (hasPending() || target <= frontier) return;
+        ensureConsoleAt(frontier);
+        int start = frontier;
+        for (int f = start; f < target; f++) {
+            if (cancelled != null && cancelled.getAsBoolean()) break;
+            runFrame(f);
+            frontier = f + 1;
+            if (frontier >= target - Greenzone.DENSE || frontier % Greenzone.SPARSE == 0) gz.put(frontier, snes.snapshot());
+            if ((frontier & 255) == 0) gz.enforce(target);
+            if (progress != null) progress.accept(frontier - start);
+        }
+        gz.put(frontier, snes.snapshot());
+        gz.enforce(frontier);
+        firstInvalid = frontier;
+        playhead = frontier;
+        captureVideo();
+    }
+
     /** Moves the playhead to {@code frame} (inside the valid range) and shows its picture. */
     public boolean seek(int frame) {
         if (frame < 0 || frame > firstInvalid) return false;
