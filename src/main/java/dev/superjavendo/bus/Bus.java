@@ -82,8 +82,12 @@ public final class Bus implements Memory, Stateful {
     // ------------------------------------------------------------------ reads
 
     public java.util.TreeMap<Integer,Integer> readHist;
+    /** Set when the game reads the controllers ($4016/$4017 or the auto-read results $4218-$421F); a frame where it stays false is a lag frame. */
+    public boolean inputPolled;
+
     private int regRead(int off) {
         Timing t = timing;
+        if (off == 0x4016 || off == 0x4017 || (off >= 0x4218 && off < 0x4220)) inputPolled = true;
         if (readHist != null) readHist.merge(off, 1, Integer::sum);
         if (ioTrace && (off == 0x4016 || off == 0x4017 || (off >= 0x4218 && off <= 0x421B) || off == 0x4212))
             System.out.printf("f%d v=%d h=%d: R %04X PC=%06X%n", ppu.traceFrame, timing.v, timing.h, off, cpu != null ? cpu.pcFull() : 0);

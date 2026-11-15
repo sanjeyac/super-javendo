@@ -41,9 +41,14 @@ public final class Snes {
 
     /** Emulates one full NTSC frame (262 scanlines). */
     public void runFrame() {
+        bus.inputPolled = false;
         for (int v = 0; v < Timing.LINES; v++) runScanline(v);
         frameCount++;
+        lastFrameLagged = !bus.inputPolled;
     }
+
+    /** True if the game never read the controllers during the last frame (a "lag frame": its inputs had no effect). */
+    public boolean lastFrameLagged;
 
     public boolean pcTrace;
     private int nmiDelay;
@@ -117,6 +122,44 @@ public final class Snes {
     }
 
     private int romId() { return java.util.Arrays.hashCode(cart.rom) * 31 + cart.rom.length; }
+
+    /**
+     * The whole console as raw, uncompressed bytes, with no timestamp and no screenshot: identical consoles give identical
+     * bytes, so {@link #stateHash()} can compare them. Used by the Rec editor's greenzone; the user's save states keep
+     * using {@link #saveState()}. Taken between frames.
+     */
+    public byte[] snapshot() {
+        try {
+            ByteArrayOutputStream raw = new ByteArrayOutputStream(1 << 19);
+            StateOut o = new StateOut(raw);
+            o.i(carry); o.l(frameCount); o.i(nmiDelay);
+            cpu.save(o);
+            bus.save(o);
+            if (cart.coprocessor != null) cart.coprocessor.save(o);
+            if (cart.msu != null) cart.msu.save(o);
+            o.flush();
+            return raw.toByteArray();
+        } catch (IOException e) { throw new IllegalStateException(e); }   // a memory stream cannot fail
+    }
+
+    /** Puts the console back to a {@link #snapshot()} of the same game. */
+    public void restore(byte[] snapshot) {
+        try {
+            StateIn in = new StateIn(new ByteArrayInputStream(snapshot));
+            carry = in.i(); frameCount = in.l(); nmiDelay = in.i();
+            cpu.load(in);
+            bus.load(in);
+            if (cart.coprocessor != null) cart.coprocessor.load(in);
+            if (cart.msu != null) cart.msu.load(in);
+        } catch (IOException e) { throw new IllegalStateException("Corrupt snapshot", e); }
+    }
+
+    /** CRC32 of {@link #snapshot()}: equal consoles, equal hash. */
+    public int stateHash() {
+        java.util.zip.CRC32 c = new java.util.zip.CRC32();
+        c.update(snapshot());
+        return (int) c.getValue();
+    }
 
     /** Serialises the whole console (taken between frames) into a compressed byte array. */
     public byte[] saveState() throws IOException {
