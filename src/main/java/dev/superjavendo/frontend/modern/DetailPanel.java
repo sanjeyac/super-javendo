@@ -32,8 +32,8 @@ final class DetailPanel extends JComponent implements Scrollable {
     private Runnable onPlay = () -> { }, onStar = () -> { }, onAssignCover = () -> { };
     private java.util.function.IntConsumer onResume = s -> { };
     private final Rectangle[] slotRects = new Rectangle[AppPaths.MAX_SLOT + 1];
-    private Rectangle playRect = new Rectangle(), starRect = new Rectangle(), resumeRect = new Rectangle(), assignRect = new Rectangle(), recRect = new Rectangle(), replayRect = new Rectangle();
-    private Runnable onRec = () -> { }, onReplay = () -> { };
+    private Rectangle playRect = new Rectangle(), starRect = new Rectangle(), resumeRect = new Rectangle(), assignRect = new Rectangle(), recRect = new Rectangle(), replayRect = new Rectangle(), editorRect = new Rectangle();
+    private Runnable onRec = () -> { }, onReplay = () -> { }, onEditor = () -> { };
     private java.util.function.ToIntFunction<Game> movieCount = g -> 0;
     private int replays = -1;              // recordings of this game; -1 = not counted yet
     private int contentH = 600;
@@ -52,6 +52,7 @@ final class DetailPanel extends JComponent implements Scrollable {
                     if (slotRects[s] != null && slotRects[s].contains(e.getPoint()) && slots != null && slots[s].exists()) { onResume.accept(s); return; }
                 if (playRect.contains(e.getPoint())) onPlay.run();
                 else if (recRect.contains(e.getPoint())) onRec.run();
+                else if (editorRect.contains(e.getPoint())) onEditor.run();
                 else if (replayRect.contains(e.getPoint()) && replays > 0) onReplay.run();
                 else if (starRect.contains(e.getPoint())) onStar.run();
                 else if (assignRect.contains(e.getPoint())) onAssignCover.run();
@@ -67,6 +68,8 @@ final class DetailPanel extends JComponent implements Scrollable {
     void onRec(Runnable r) { onRec = r; }
     /** "Replay": choose one of the game's recordings. */
     void onReplay(Runnable r) { onReplay = r; }
+    /** "TAS editor": open the Rec editor window on this game. */
+    void onEditor(Runnable r) { onEditor = r; }
     void movieCount(java.util.function.ToIntFunction<Game> f) { movieCount = f; }
     void onAssignCover(Runnable r) { onAssignCover = r; }
 
@@ -116,7 +119,7 @@ final class DetailPanel extends JComponent implements Scrollable {
         int w = getWidth();
         g2.setColor(Pal.SIDE);
         g2.fillRect(0, 0, w, getHeight());
-        playRect = starRect = resumeRect = assignRect = recRect = replayRect = new Rectangle();
+        playRect = starRect = resumeRect = assignRect = recRect = replayRect = editorRect = new Rectangle();
         if (game == null) {
             Ui.text(g2, t("detail.none"), PAD, 60, Pal.ui(14, 0), Pal.TXT3);
             g2.dispose();
@@ -179,6 +182,12 @@ final class DetailPanel extends JComponent implements Scrollable {
         g2.fillPolygon(new int[]{rx, rx, rx + 9}, new int[]{y + bh / 2 - 5, y + bh / 2 + 5, y + bh / 2}, 3);
         String rt = t("detail.replay") + (canReplay ? "  " + replays : "");
         Ui.text(g2, Ui.ellipsize(bm, rt, replayRect.width - 50), rx + 18, y + (bh + bm.getAscent() - bm.getDescent()) / 2, bf, rc);
+        y += bh + 8;
+        editorRect = new Rectangle(PAD, y, cw, bh);
+        Ui.fillRound(g2, PAD, y, cw, bh, 10, Pal.CARD, Pal.CARD_LINE);
+        g2.setColor(Pal.TXT);
+        for (int k = 0; k < 3; k++) for (int j = 0; j < 4; j++) g2.fillRect(PAD + 18 + j * 4, y + bh / 2 - 6 + k * 5, 3, 3);
+        Ui.text(g2, Ui.ellipsize(bm, t("detail.editor"), cw - 60), PAD + 44, y + (bh + bm.getAscent() - bm.getDescent()) / 2, bf, Pal.TXT);
         y += bh + 24;
         int half = cw / 2;
         data(g2, t("field.genre"), game.genre().isEmpty() ? "—" : game.genre(), PAD, y, half);

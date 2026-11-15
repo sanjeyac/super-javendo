@@ -14,6 +14,8 @@ final class Pal {
             TXT = new Color(0xe6e9ef), TXT2 = new Color(0xaab2c2), TXT3 = new Color(0x8a93a5),
             ACCENT = new Color(0x5b4bd6), ACCENT_L = new Color(0xb4aaff),
             PLAY = new Color(0x3fbf6f), PLAY_TXT = new Color(0x06180d), RUN = new Color(0x4fd17f), STAR = new Color(0xf5c542),
+            PLANNED_ON = new Color(0x3a3474), INVALID_BG = new Color(0x2b2716), INVALID_LINE = new Color(0x4d4425), PLANNED_LINE = new Color(0x4a5366),
+            REC = new Color(0xff5a64), AMBER = new Color(0xf6d48a),
             OK = new Color(0x8be8ad), WARN = new Color(0xf6d48a), DUP = new Color(0xa9c7ff), UNK = new Color(0xdcc4ff), ERR = new Color(0xffb3bc);
 
     private static final Map<String, Font> CACHE = new HashMap<>();

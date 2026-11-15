@@ -57,6 +57,12 @@ public final class Main {
             javax.imageio.ImageIO.write(shell.render(w, h, tab, args.length > 5 && args[5].equals("list"), args.length > 6 ? args[6] : ""), "png", new java.io.File(args[1]));
             System.exit(0);
         }
+        if (args.length >= 6 && args[0].equals("--rec-shot")) {     // --rec-shot ROM out.png W H FRAMES [edit]: the Rec editor, headless
+            System.setProperty("java.awt.headless", "true");
+            var img = dev.superjavendo.frontend.modern.Shell.recShot(Path.of(args[1]), AppPaths.forCurrentUser(), Integer.parseInt(args[3]), Integer.parseInt(args[4]), Integer.parseInt(args[5]), args.length > 6 && args[6].equals("edit"));
+            javax.imageio.ImageIO.write(img, "png", new java.io.File(args[2]));
+            System.exit(0);
+        }
         Path rom = null;
         int headlessFrames = -1;
         String shot = null;

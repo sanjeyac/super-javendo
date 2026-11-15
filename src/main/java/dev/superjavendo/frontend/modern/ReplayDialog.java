@@ -22,7 +22,7 @@ final class ReplayDialog {
     private final int crc;
     private final JDialog dialog;
     private final RowList rows = new RowList();
-    private final Ui.Btn playBtn, renameBtn, deleteBtn;
+    private final Ui.Btn playBtn, renameBtn, deleteBtn, editBtn;
 
     ReplayDialog(Shell shell, Game game) {
         this.shell = shell;
@@ -44,8 +44,9 @@ final class ReplayDialog {
         playBtn = new Ui.Btn(t("replay.play"), Pal.PLAY, Pal.PLAY_TXT, null).onClick(this::play);
         renameBtn = new Ui.Btn(t("replay.rename"), Pal.CARD, Pal.TXT, Pal.CARD_LINE).onClick(this::rename);
         deleteBtn = new Ui.Btn(t("replay.delete"), new Color(0x4a2630), Pal.ERR, null).onClick(this::delete);
+        editBtn = new Ui.Btn(t("replay.edit"), Pal.CARD, Pal.TXT, Pal.CARD_LINE).onClick(this::edit);
         Ui.Btn close = new Ui.Btn(t("replay.close"), Pal.CARD, Pal.TXT, Pal.CARD_LINE).onClick(dialog::dispose);
-        for (Ui.Btn b : List.of(deleteBtn, renameBtn, close, playBtn)) foot.add(b);
+        for (Ui.Btn b : List.of(deleteBtn, renameBtn, close, editBtn, playBtn)) foot.add(b);
         root.add(foot, BorderLayout.SOUTH);
         dialog.setContentPane(root);
 
@@ -74,7 +75,7 @@ final class ReplayDialog {
     private void reload() {
         rows.set(shell.movies().list(crc));
         boolean any = rows.selected() != null;
-        playBtn.setEnabled(any); renameBtn.setEnabled(any); deleteBtn.setEnabled(any);
+        playBtn.setEnabled(any); renameBtn.setEnabled(any); deleteBtn.setEnabled(any); editBtn.setEnabled(any);
     }
 
     private void play() {
@@ -82,6 +83,17 @@ final class ReplayDialog {
         if (e == null) return;
         dialog.dispose();
         shell.replay(game, e.file());
+    }
+
+    /** Opens the recording in the Rec editor: it is brought to its end at full speed, ready to be corrected. */
+    private void edit() {
+        Movies.Entry e = rows.selected();
+        if (e == null) return;
+        try {
+            Movie m = Movie.load(e.file());
+            dialog.dispose();
+            shell.openRecEditor(game, m);
+        } catch (IOException ex) { fail(ex); }
     }
 
     private void rename() {

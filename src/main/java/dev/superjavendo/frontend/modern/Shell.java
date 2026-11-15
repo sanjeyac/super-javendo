@@ -76,6 +76,21 @@ public final class Shell extends JPanel {
     /** The undo stack of the user's reversible actions (favourites, hide/show, main file). */
     UndoStack undo() { return undo; }
 
+    /** Opens the Rec editor on a game (a new run, or {@code movie} to correct). */
+    void openRecEditor(Game g, dev.superjavendo.movie.Movie movie) {
+        if (isRunning(g)) closeRunning();
+        try {
+            RecWindow.open(g.path(), movie, paths);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, t("rec.error.open", ex.getMessage()), t("error"), JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /** Headless screenshot of the Rec editor (development aid). */
+    public static java.awt.image.BufferedImage recShot(Path rom, AppPaths paths, int w, int h, int frames, boolean edit) throws Exception {
+        return RecWindow.shot(rom, null, paths, w, h, frames, edit);
+    }
+
     /** The folder of input movies. */
     dev.superjavendo.movie.Movies movies() { return new dev.superjavendo.movie.Movies(paths.moviesDir()); }
 
