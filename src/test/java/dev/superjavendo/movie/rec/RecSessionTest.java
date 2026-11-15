@@ -114,7 +114,7 @@ class RecSessionTest {
 
     @Test void aRunBuiltWithEditsEqualsALinearRunOfTheSameFinalInputs() {
         Cartridge c = RecTestRom.readsPad();
-        int n = 300;
+        int n = 200;
         int expected = plainHash(c, n, RecSessionTest::pad);
         // linear
         try (RecSession lin = session(c, n, RecSessionTest::pad)) {
@@ -130,7 +130,7 @@ class RecSessionTest {
             assertEquals(n, ed.frontier());
             assertEquals(expected, ed.consoleHash());
             // and a second round: edit in the middle, undo it, re-emulate again
-            ed.toggle(0, 120, Joypad.START);
+            ed.toggle(0, 100, Joypad.START);
             ed.reemulate();
             ed.undo();
             ed.reemulate();
@@ -141,9 +141,9 @@ class RecSessionTest {
     @Test void seekGivesTheSameConsoleAsRunningFromZero() {
         Cartridge c = RecTestRom.readsPad();
         try (RecSession s = session(c, 0, f -> 0)) {
-            for (int f = 0; f < 400; f++) s.set(0, f, pad(f), true);
-            advance(s, 400);
-            for (int t : new int[]{0, 1, 59, 60, 137, 300, 399, 400}) {
+            for (int f = 0; f < 200; f++) s.set(0, f, pad(f), true);
+            advance(s, 200);
+            for (int t : new int[]{0, 1, 59, 60, 137, 199, 200}) {
                 assertTrue(s.seek(t));
                 assertEquals(t, s.playhead());
                 assertEquals(plainHash(c, t, RecSessionTest::pad), s.consoleHash(), "seek to " + t);

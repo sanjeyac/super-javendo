@@ -194,7 +194,7 @@ public final class RecSession implements AutoCloseable {
 
     private void settlePlayhead() {
         int p = Math.min(playhead, firstInvalid);
-        if (p != playhead || !consoleValid) renderAt(p);
+        if (p != playhead) renderAt(p);                 // the picture at the playhead is still valid otherwise; the console is restored lazily
     }
 
     // ------------------------------------------------------------------ saving
@@ -241,7 +241,9 @@ public final class RecSession implements AutoCloseable {
 
     private void ensureConsoleAt(int k) {
         if (consoleValid && consoleFrame == k) return;
-        restoreTo(k);
+        int from = gz.nearestAtOrBefore(k);             // the exact snapshot may have been thinned: run forward from an older one
+        restoreTo(from);
+        for (int f = from; f < k; f++) runFrame(f);
     }
 
     /** Puts the console at {@code frame} having just run the frame before it, so the picture is real; moves the playhead there. */
