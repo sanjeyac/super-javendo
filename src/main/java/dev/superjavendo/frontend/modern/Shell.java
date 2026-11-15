@@ -33,6 +33,9 @@ public final class Shell extends JPanel {
     private final JLabel runningLabel = Widgets.label("", Pal.ui(14, 1), Pal.TXT);
     private final JLabel padStatus = Widgets.label("", Pal.ui(13, 0), Pal.TXT2);
 
+    private final UndoStack undo = new UndoStack();
+    private final JLabel notice = Widgets.label("", Pal.ui(13, 1), Pal.ACCENT_L);
+    private final javax.swing.Timer noticeTimer = new javax.swing.Timer(3500, e -> notice.setText(""));
     private EmuWindow running;
     private Game runningGame;
     private long runningSince;
@@ -65,8 +68,47 @@ public final class Shell extends JPanel {
         updateRunning();
         updatePads();
         computeCrcsAsync();
+        installUndoKeys();
         new PadNav(paths, () -> !controller.listening() && screens.isShowing()
                 && (running == null || !running.isDisplayable() || !running.isActive()), this::padAction);
+    }
+
+    /** The undo stack of the user's reversible actions (favourites, hide/show, main file). */
+    UndoStack undo() { return undo; }
+
+    /** Ctrl+Z undoes, Ctrl+Shift+Z or Ctrl+Y redoes (Cmd on macOS); not while the controller screen waits for an input. */
+    private void installUndoKeys() {
+        int mask = shortcutMask();
+        InputMap im = getInputMap(WHEN_IN_FOCUSED_WINDOW);
+        im.put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z, mask), "undo");
+        im.put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z, mask | java.awt.event.InputEvent.SHIFT_DOWN_MASK), "redo");
+        im.put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Y, mask), "redo");
+        getActionMap().put("undo", new AbstractAction() { @Override public void actionPerformed(java.awt.event.ActionEvent e) { undoLast(); } });
+        getActionMap().put("redo", new AbstractAction() { @Override public void actionPerformed(java.awt.event.ActionEvent e) { redoLast(); } });
+    }
+
+    /** Ctrl, or Cmd on macOS. Not Toolkit.getMenuShortcutKeyMaskEx(): that throws when there is no display (tests, screenshots). */
+    static int shortcutMask() {
+        return System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("mac")
+                ? java.awt.event.InputEvent.META_DOWN_MASK : java.awt.event.InputEvent.CTRL_DOWN_MASK;
+    }
+
+    void undoLast() {
+        if (controller.listening()) return;
+        String what = undo.undo();
+        say(what == null ? t("undo.nothing") : t("undo.done", what));
+    }
+
+    void redoLast() {
+        if (controller.listening()) return;
+        String what = undo.redo();
+        say(what == null ? t("undo.nothingredo") : t("undo.redone", what));
+    }
+
+    /** A short message in the top bar that disappears by itself. */
+    private void say(String text) {
+        notice.setText(text);
+        noticeTimer.restart();
     }
 
     private void padAction(String b) {
@@ -137,6 +179,7 @@ public final class Shell extends JPanel {
         runningPill.add(front);
         runningPill.add(close);
         right.add(runningPill);
+        right.add(notice);
         right.add(padStatus);
         bar.add(right, BorderLayout.EAST);
         return bar;

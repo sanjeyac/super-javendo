@@ -83,7 +83,7 @@ final class LibraryScreen extends JPanel {
         add(centre, BorderLayout.CENTER);
 
         // ---- right column
-        JScrollPane rs = Widgets.scroll(detail, Pal.SIDE);
+        JScrollPane rs = Widgets.scroll(detail, Pal.SIDE, true);
         rs.setPreferredSize(new Dimension(348, 0));
         add(wrapEdge(rs, false), BorderLayout.EAST);
 
@@ -215,7 +215,14 @@ final class LibraryScreen extends JPanel {
     }
 
     private void toggleFavorite(Game g) {
-        model.toggleFavorite(g);
+        boolean on = !model.favorite(g);
+        java.nio.file.Path rom = g.path();
+        setFavorite(rom, on);
+        shell.undo().push(t(on ? "undo.fav.on" : "undo.fav.off", g.title()), () -> setFavorite(rom, !on), () -> setFavorite(rom, on));
+    }
+
+    private void setFavorite(java.nio.file.Path rom, boolean on) {
+        model.setFavorite(rom, on);
         rebuildLeft();
         grid.repaint();
         list.repaint();

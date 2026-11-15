@@ -42,7 +42,7 @@ final class RomManagerScreen extends JPanel {
         this.covers = covers;
         setBackground(Pal.MAIN);
         detail = new RomDetail(covers, data.paths, new RomDetail.Actions() {
-            @Override public void setMain(Game g) { data.setPrimary(g); shell.dataChanged(); }
+            @Override public void setMain(Game g) { setMainFile(g); }
             @Override public void hide(List<Game> games, boolean hide) { hideFiles(games, hide); }
             @Override public void trash(Game g) { trashFile(g); }
             @Override public void changeCover(Game g) { pickCover(g); }
@@ -208,8 +208,23 @@ final class RomManagerScreen extends JPanel {
     }
 
     private void hideFiles(List<Game> games, boolean hide) {
-        data.setHidden(games.stream().map(Game::path).toList(), hide);
+        List<java.nio.file.Path> paths = games.stream().map(Game::path).toList();
+        java.util.Map<java.nio.file.Path, Boolean> before = data.hiddenState(paths);
+        data.setHidden(paths, hide);
         shell.dataChanged();
+        String what = games.size() == 1 ? games.get(0).title() : t("undo.files", games.size());
+        shell.undo().push(t(hide ? "undo.hide" : "undo.show", what),
+                () -> { data.restoreHidden(before); shell.dataChanged(); },
+                () -> { data.setHidden(paths, hide); shell.dataChanged(); });
+    }
+
+    private void setMainFile(Game g) {
+        java.nio.file.Path before = data.primaryOf(g.groupKey());
+        data.setPrimary(g);
+        shell.dataChanged();
+        shell.undo().push(t("undo.main", g.title()),
+                () -> { data.restorePrimary(g.groupKey(), before); shell.dataChanged(); },
+                () -> { data.setPrimary(g); shell.dataChanged(); });
     }
 
     private void trashFile(Game g) {

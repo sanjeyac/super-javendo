@@ -110,7 +110,27 @@ final class LibraryData {
         overrides.save();
     }
 
+    /** Whether each of the files is hidden now (to restore it later). */
+    java.util.Map<Path, Boolean> hiddenState(Collection<Path> roms) {
+        java.util.Map<Path, Boolean> out = new java.util.LinkedHashMap<>();
+        for (Path p : roms) out.put(p, overrides.isHidden(p));
+        return out;
+    }
+
+    void restoreHidden(java.util.Map<Path, Boolean> state) {
+        state.forEach(overrides::setHidden);
+        overrides.save();
+    }
+
     void setPrimary(Game g) { overrides.setPrimary(g.groupKey(), g.path()); overrides.save(); }
+
+    Path primaryOf(String groupKey) { return overrides.primaryOf(groupKey); }
+
+    /** Puts back the main file a group had before (null = none chosen). */
+    void restorePrimary(String groupKey, Path rom) {
+        if (rom == null) overrides.clearPrimary(groupKey); else overrides.setPrimary(groupKey, rom);
+        overrides.save();
+    }
 
     /** Moves the ROM to the trash and takes it off the list. */
     void trash(Game g) throws IOException {

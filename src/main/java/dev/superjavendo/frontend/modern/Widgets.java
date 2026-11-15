@@ -108,8 +108,16 @@ final class Widgets {
     }
 
     /** A scroll pane with thin dark bars and no border. */
-    static JScrollPane scroll(JComponent c, Color bg) {
-        JScrollPane sp = new JScrollPane(c, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+    static JScrollPane scroll(JComponent c, Color bg) { return scroll(c, bg, false); }
+
+    /**
+     * @param reserveBar always keep the scroll bar's width: a view whose layout depends on its width (the detail panel scales
+     *                   its cover) would otherwise change size, and flicker, every time the bar appears or disappears.
+     *                   An idle bar is invisible: same colour as the background and no thumb.
+     */
+    static JScrollPane scroll(JComponent c, Color bg, boolean reserveBar) {
+        JScrollPane sp = new JScrollPane(c, reserveBar ? ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS : ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         sp.setBorder(null);
         sp.getViewport().setBackground(bg);
         sp.setBackground(bg);

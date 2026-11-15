@@ -38,6 +38,9 @@ public final class Overrides {
 
     public void setPrimary(String groupKey, Path rom) { primary.put(groupKey, key(rom)); }
 
+    /** Forgets the chosen main file of the group (the library picks one again by itself). */
+    public void clearPrimary(String groupKey) { primary.remove(groupKey); }
+
     public void load() {
         hidden.clear();
         primary.clear();

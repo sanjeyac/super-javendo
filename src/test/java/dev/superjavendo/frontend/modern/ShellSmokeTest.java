@@ -60,4 +60,19 @@ class ShellSmokeTest {
     @Test void controller() throws Exception { check("controller", false, "", 1300, 800); }
     @Test void settings() throws Exception { check("settings", false, "", 1100, 700); }
     @Test void smallWindow() throws Exception { check("library", false, "", 640, 480); }
+
+    @Test void ctrlZAndCtrlShiftZAreWiredToTheUndoStack() throws Exception {
+        int[] n = {0};
+        shell.undo().push("test", () -> n[0]--, () -> n[0]++);
+        n[0]++;
+        var im = shell.getInputMap(javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW);
+        int mask = Shell.shortcutMask();
+        assertEquals("undo", im.get(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z, mask)));
+        assertEquals("redo", im.get(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Y, mask)));
+        assertEquals("redo", im.get(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z, mask | java.awt.event.InputEvent.SHIFT_DOWN_MASK)));
+        javax.swing.SwingUtilities.invokeAndWait(shell::undoLast);
+        assertEquals(0, n[0]);
+        javax.swing.SwingUtilities.invokeAndWait(shell::redoLast);
+        assertEquals(1, n[0]);
+    }
 }

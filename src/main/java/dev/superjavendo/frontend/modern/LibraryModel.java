@@ -87,10 +87,15 @@ public final class LibraryModel {
     public long playSeconds(Game g) { var e = user.peek(g.path()); return e == null ? 0 : e.playSeconds; }
 
     public boolean toggleFavorite(Game g) {
-        var e = user.of(g.path());
-        e.favorite = !e.favorite;
+        boolean on = !favorite(g);
+        setFavorite(g.path(), on);
+        return on;
+    }
+
+    public void setFavorite(java.nio.file.Path rom, boolean on) {
+        var e = user.of(rom);
+        e.favorite = on;
         user.save();
-        return e.favorite;
     }
 
     public int count(Collection c) {

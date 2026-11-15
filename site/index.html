@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperJavendo — a Super Nintendo emulator in Java</title>
+<meta name="description" content="SuperJavendo is a Super Nintendo (SNES) emulator written from scratch in Java, with no external libraries: coprocessors, save states, a game library and gamepad support.">
+<meta property="og:title" content="SuperJavendo — a Super Nintendo emulator in Java">
+<meta property="og:description" content="A SNES emulator written from scratch in plain Java: CPU, PPU, SPC700/DSP, coprocessors, save states and a game library.">
+<meta property="og:image" content="img/splash.jpg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="#top">SUPER JAVENDO</a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#hardware">Hardware</a>
+      <a href="#start" class="keep">Get started</a>
+      <a href="#controls">Controls</a>
+      <a href="https://github.com/sanjeyac/super-javendo" class="keep">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+<div class="wrap hero">
+  <img class="splash" src="img/splash.jpg" alt="Duke (the Java mascot) and Tux playing Street Fighter II on a Super Nintendo" width="560">
+  <h1>A Super Nintendo emulator,<br>written in Java</h1>
+  <p class="lead">Built from scratch with nothing but the JDK, Swing and <code>javax.sound</code>. No external libraries, no native code: a small, readable, tested model of the SNES hardware.</p>
+  <div class="buttons">
+    <a class="btn primary" href="#start">Build and run</a>
+    <a class="btn" href="https://github.com/sanjeyac/super-javendo">View on GitHub</a>
+  </div>
+  <div class="badges">
+    <span class="badge">Java 25+</span>
+    <span class="badge">No dependencies at run time</span>
+    <span class="badge">8 languages</span>
+    <span class="badge">Tested on Linux</span>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="shot"><img src="img/screenshot.png" alt="SuperJavendo library: cover grid, collections and the save states of the selected game" width="1438" height="880"></div>
+    <p class="caption">The game library: cover grid, collections, search, save-state slots and the records stored in the game's battery save.</p>
+  </div>
+</section>
+
+<section id="why" class="alt">
+  <div class="wrap two">
+    <div>
+      <h2>Why another emulator?</h2>
+      <p class="sub" style="margin-bottom:0">This project exists to <strong>re-study the architectures of the console hardware that made history</strong> and to rebuild them from scratch.</p>
+    </div>
+    <div>
+      <p style="margin-top:0;color:var(--text-2)">Java used to be a poor choice for this: the virtual machine and the garbage collector left no headroom for emulating several processors, two video chips and a sound subsystem in real time. With today's JIT compilers it is not only possible but pleasant: the code stays readable, portable and testable.</p>
+      <p style="margin-bottom:0;color:var(--text-2)">The SNES is the first target. The goal is a small "museum" of consoles built with the same philosophy: understand how the hardware worked, write the simplest model that reproduces it faithfully, and validate it with automated tests and test ROMs.</p>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <h2>What it does</h2>
+    <p class="sub">A complete emulator and a front end to go with it.</p>
+    <div class="grid">
+      <div class="card"><span class="tag">Video</span><h3>PPU with every mode</h3><p>Modes 0 to 7, sprites, windows, mosaic, colour math, plus hi-res (modes 5 and 6), pseudo hi-res and interlace. Full-screen with F11.</p></div>
+      <div class="card"><span class="tag">Audio</span><h3>SPC700 + DSP</h3><p>The real IPL ROM, BRR decoding, ADSR/GAIN, noise, echo and interpolation, played at 48 kHz.</p></div>
+      <div class="card"><span class="tag">Cartridges</span><h3>Coprocessors</h3><p>SuperFX (GSU), SA-1, DSP-1, Cx4, S-DD1, OBC1 and MSU-1, on top of LoROM and HiROM with battery SRAM. ROMs can be <code>.zip</code>.</p></div>
+      <div class="card"><span class="tag">States</span><h3>Save states</h3><p>Four slots plus a quick slot, each with an embedded screenshot, and a "Resume" button in the library.</p></div>
+      <div class="card"><span class="tag">Library</span><h3>Game library &amp; ROM Manager</h3><p>Cover grid or list, favourites, play time, undo/redo (Ctrl+Z), duplicate handling, and dump verification against the No-Intro database.</p></div>
+      <div class="card"><span class="tag">Input</span><h3>Keyboard and gamepads</h3><p>Editable profiles, several inputs per button, one profile per player, hot-plugged pads, and a pad-driven library.</p></div>
+      <div class="card"><span class="tag">Records</span><h3>Game-specific saves</h3><p>The library reads high scores and best times from the battery save of games it knows. F-ZERO is the first.</p></div>
+      <div class="card"><span class="tag">Languages</span><h3>Eight languages</h3><p>English, Italiano, Español, Français, Deutsch, Português, Nederlands, Polski; it follows the system language.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="hardware" class="alt">
+  <div class="wrap">
+    <h2>The hardware, component by component</h2>
+    <p class="sub">One Java package per hardware component, validated against test suites and against other emulators.</p>
+    <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>Component</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>65816 CPU</td><td>Complete, validated against the <em>SingleStepTests</em> per-instruction suite.</td></tr>
+        <tr><td>Timing</td><td>Scanline scheduler (262 lines × 1364 master clocks), VBlank, H/V NMI and IRQ, joypad auto-read.</td></tr>
+        <tr><td>DMA / HDMA</td><td>Direct and indirect, including the quirks real games rely on.</td></tr>
+        <tr><td>PPU</td><td>Modes 0 to 7, sprites, windows, mosaic, colour math (main and sub screen), hi-res and interlace.</td></tr>
+        <tr><td>SPC700 / DSP</td><td>Real IPL ROM, full DSP voice pipeline, 48 kHz output.</td></tr>
+        <tr><td>SuperFX</td><td>Implemented; RAM identical to snes9x on the chip test cartridges. Star Fox, Yoshi's Island and others run.</td></tr>
+        <tr><td>SA-1</td><td>Second 65816 with its own bus, mapper, DMA, multiplier/divider and variable-length bit reader.</td></tr>
+        <tr><td>DSP-1, Cx4</td><td>High-level emulation of every command, checked against snes9x and bsnes on random vectors.</td></tr>
+        <tr><td>S-DD1, OBC1, MSU-1</td><td>Implemented (S-DD1 verified on screen against snes9x).</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="caption" style="text-align:left">Accuracy is scanline-level (snes9x style), not cycle-level (bsnes style): games very sensitive to timing may diverge.</p>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <h2>Get started</h2>
+    <p class="sub">You need a JDK and a ROM you own. There is nothing to install: build one jar and run it.</p>
+    <ol class="steps">
+      <li>
+        <h3>Check your tools</h3>
+        <p>JDK <strong>25 or newer</strong> and Maven 3.9+.</p>
+        <pre><code>java -version
+mvn -version</code></pre>
+      </li>
+      <li>
+        <h3>Build</h3>
+        <p>This compiles, runs the tests and produces a single self-contained jar.</p>
+        <pre><code>git clone https://github.com/sanjeyac/super-javendo.git
+cd super-javendo
+mvn package</code></pre>
+      </li>
+      <li>
+        <h3>Run</h3>
+        <p>Without arguments it opens the game library; with a ROM it starts the game.</p>
+        <pre><code>java -jar target/superjavendo.jar                   # the library
+java -jar target/superjavendo.jar game.sfc          # start a ROM directly
+java -jar target/superjavendo.jar game.sfc -p1 xbox -p2 keyboard2</code></pre>
+      </li>
+      <li>
+        <h3>Add your games</h3>
+        <p>In <strong>ROM Manager</strong> choose the folders that hold your ROMs. Covers are looked up by file name in a <code>covers/</code> folder next to them.</p>
+      </li>
+    </ol>
+    <p class="note" style="margin-top:24px">The full guide, including macOS and Windows notes, is in <a href="https://github.com/sanjeyac/super-javendo/blob/main/INSTALL.md">INSTALL.md</a>. No ROMs are included and none ever will be.</p>
+  </div>
+</section>
+
+<section id="controls" class="alt">
+  <div class="wrap two">
+    <div>
+      <h2>In-game controls</h2>
+      <p class="sub">The default <code>keyboard</code> profile. Profiles are plain text files you can edit, or set up in the Controller screen.</p>
+    </div>
+    <div class="table-scroll">
+    <table class="table">
+      <thead><tr><th>Key</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td>Arrows, Z, X, A, S</td><td>D-pad, B, A, Y, X</td></tr>
+        <tr><td>Q, W</td><td>L, R</td></tr>
+        <tr><td>Enter, Shift</td><td>Start, Select</td></tr>
+        <tr><td>F5 / F9</td><td>Save / load the quick slot</td></tr>
+        <tr><td>1…4 / Shift+1…4</td><td>Save / load slot 1…4</td></tr>
+        <tr><td>P</td><td>Pause</td></tr>
+        <tr><td>F11</td><td>Full screen</td></tr>
+        <tr><td>Esc</td><td>Leave full screen, then quit</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="wrap two">
+    <div>
+      <h2>Readable by design</h2>
+      <p class="sub" style="margin-bottom:12px">Controllers are interchangeable strategies, profiles are plain data, and component state is serialisable so save states stay deterministic.</p>
+      <ul class="plain">
+        <li><strong>456 unit tests</strong> cover CPU, PPU, APU, DMA, the scheduler, save states, input and the front end.</li>
+        <li>Test cartridges for the coprocessors are compared against snes9x and bsnes.</li>
+        <li>A frame-by-frame comparison tool checks the output against snes9x with identical inputs.</li>
+      </ul>
+    </div>
+<pre><code>cpu/       65816 CPU
+bus/       address bus, I/O registers
+cart/      LoROM/HiROM, SRAM, coprocessors
+dma/       DMA and HDMA
+ppu/       scanline renderer
+apu/       SPC700, DSP, ports
+input/     controllers, profiles
+games/     per-game knowledge (records)
+frontend/  library, ROM Manager, settings
+Snes.java  wires it together, runs the scheduler</code></pre>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <h2>Known limits</h2>
+    <ul class="plain">
+      <li>Scanline-accurate timing, not cycle-accurate; ROM/RAM arbitration between the CPU and the SuperFX or SA-1 is not modelled.</li>
+      <li><em>Doom</em> (SuperFX) renders with corrupted textures.</li>
+      <li>Multitap (more than two players) and special peripherals such as the Super Scope are not supported yet.</li>
+      <li>Gamepads on macOS and Windows use the input4j library and have not been tried on real hardware.</li>
+    </ul>
+    <p style="margin-top:16px"><a href="https://github.com/sanjeyac/super-javendo/blob/main/docs/roadmap.md">Read the roadmap →</a></p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>SuperJavendo</strong> is an educational project. It does not contain or distribute ROMs, BIOS images or copyrighted cover art.</p>
+    <p><em>Super Nintendo</em> and <em>SNES</em> are trademarks of Nintendo; this project is not affiliated with or endorsed by Nintendo.</p>
+    <p><a href="https://github.com/sanjeyac/super-javendo">Source code on GitHub</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
