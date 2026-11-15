@@ -37,7 +37,7 @@ final class RecPianoRoll extends JComponent {
             @Override public void mouseReleased(MouseEvent e) { dragRow = -1; }
             @Override public void mouseMoved(MouseEvent e) { hover(e); }
             @Override public void mouseExited(MouseEvent e) { hoverFrame = hoverRow = -1; repaint(); }
-            @Override public void mouseWheelMoved(MouseWheelEvent e) { scrollTo(first + e.getWheelRotation() * 10); }
+            @Override public void mouseWheelMoved(MouseWheelEvent e) { scrollWithin(first + e.getWheelRotation() * 10); }
         };
         addMouseListener(m);
         addMouseMotionListener(m);
@@ -60,11 +60,17 @@ final class RecPianoRoll extends JComponent {
     int selectionFrom() { return selFrom; }
     int selectionTo() { return selTo; }
 
+    /** Scrolls so that {@code frame} is the first visible one. The future has no end: inputs can be planned as far ahead as you like. */
     void scrollTo(int frame) {
-        int max = Math.max(0, panel.view().inputs().length() + visibleFrames());
-        first = Math.max(0, Math.min(frame, Math.max(max, panel.view().frontier() + visibleFrames())));
+        first = Math.max(0, frame);
         repaint();
         panel.timeline.repaint();
+    }
+
+    /** The wheel and the timeline viewport stay within the run (plus one screen); the cursor and the playhead can go beyond. */
+    void scrollWithin(int frame) {
+        int limit = Math.max(panel.view().inputs().length(), panel.view().frontier()) + visibleFrames();
+        scrollTo(Math.min(frame, Math.max(first, limit)));
     }
 
     /** Keeps the playhead in view (called when it moves). */

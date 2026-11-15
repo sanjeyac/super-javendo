@@ -112,6 +112,27 @@ class RecPanelTest {
         } finally { p.shutdown(); }
     }
 
+    @Test void inputsCanBePlannedFarIntoTheFutureWithoutDisturbingTheEmulatedPast() throws Exception {
+        RecPanel p = panel(() -> { });
+        try {
+            press(p, KeyEvent.VK_PERIOD, 0);
+            press(p, KeyEvent.VK_PERIOD, 0);
+            waitFor(() -> p.view().frontier() == 2);
+            p.render(1400, 900);                                    // gives the piano roll its width
+            p.roll.setCursorFrame(5000);
+            p.roll.moveCursor(1, 0, false);                         // the view follows the cursor far past the end of the run
+            assertEquals(5001, p.roll.cursorFrame());
+            assertTrue(p.roll.firstFrame() <= 5001 && 5001 < p.roll.firstFrame() + p.roll.visibleFrames());
+            p.padInput("a");
+            p.toggle(0, 300, 0);
+            waitFor(() -> p.view().inputs().mask(0, 5001) != 0 && p.view().inputs().mask(0, 300) != 0);
+            assertEquals(2, p.view().firstInvalid(), "nothing emulated was invalidated");
+            assertEquals(0, p.view().pending());
+            press(p, KeyEvent.VK_PERIOD, 0);                        // advancing keeps working and plays the planned frames
+            waitFor(() -> p.view().frontier() == 3);
+        } finally { p.shutdown(); }
+    }
+
     @Test void closingAnUnchangedRunDoesNotAsk() throws Exception {
         boolean[] closed = {false};
         RecPanel p = panel(() -> closed[0] = true);

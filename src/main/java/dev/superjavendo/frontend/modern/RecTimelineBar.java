@@ -98,7 +98,7 @@ final class RecTimelineBar extends JComponent {
     private void drag(MouseEvent e) {
         if (panel.disabled()) return;
         if (dragging == 1) click(frameAt(Math.max(PAD_X, Math.min(PAD_X + trackW(), e.getX()))));
-        else if (dragging == 2) panel.roll.scrollTo(frameAt(Math.max(PAD_X, Math.min(PAD_X + trackW(), e.getX() - dragOffset))));
+        else if (dragging == 2) panel.roll.scrollWithin(frameAt(Math.max(PAD_X, Math.min(PAD_X + trackW(), e.getX() - dragOffset))));
     }
 
     /** On the emulated part: seek. On the rest: only the piano roll scrolls (no seeking into the future). */
