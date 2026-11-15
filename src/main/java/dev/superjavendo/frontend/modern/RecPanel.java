@@ -270,6 +270,8 @@ final class RecPanel extends JPanel {
     // ------------------------------------------------------------------ keyboard
 
     private void bindKeys() {
+        key(KeyEvent.VK_RIGHT, 0, () -> roll.moveCursor(1, 0, false));      // one frame forward / back from the selected frame, wherever the focus is
+        key(KeyEvent.VK_LEFT, 0, () -> roll.moveCursor(-1, 0, false));
         key(KeyEvent.VK_PERIOD, 0, this::advance);
         key(KeyEvent.VK_COMMA, 0, this::back);
         key(KeyEvent.VK_PAGE_DOWN, 0, () -> seekBy(10));

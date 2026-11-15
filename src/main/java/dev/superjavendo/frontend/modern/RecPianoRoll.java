@@ -227,7 +227,7 @@ final class RecPianoRoll extends JComponent {
             g2.setColor(Pal.ACCENT_L);
             g2.drawRect(colX(a) - 1, rowY(0) - 3, colX(b + 1) - colX(a), rowY(11) + STEP_Y - rowY(0) + 3);
         }
-        if (isFocusOwner() && curFrame >= first && curFrame < first + n) {
+        if (curFrame >= first && curFrame < first + n) {
             g2.setColor(Pal.ACCENT_L);
             g2.setStroke(new BasicStroke(2f));
             g2.drawRect(colX(curFrame) - 1, rowY(curRow) - 1, CELL_W + 1, CELL_H + 1);

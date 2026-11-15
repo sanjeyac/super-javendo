@@ -95,6 +95,23 @@ class RecPanelTest {
         } finally { p.shutdown(); }
     }
 
+    @Test void leftAndRightMoveTheSelectedFrameFromAnywhere() throws Exception {
+        RecPanel p = panel(() -> { });
+        try {
+            press(p, KeyEvent.VK_RIGHT, 0);
+            press(p, KeyEvent.VK_RIGHT, 0);
+            press(p, KeyEvent.VK_RIGHT, 0);
+            assertEquals(3, p.roll.cursorFrame());
+            press(p, KeyEvent.VK_LEFT, 0);
+            assertEquals(2, p.roll.cursorFrame());
+            press(p, KeyEvent.VK_LEFT, 0); press(p, KeyEvent.VK_LEFT, 0); press(p, KeyEvent.VK_LEFT, 0);
+            assertEquals(0, p.roll.cursorFrame(), "never before frame 0");
+            press(p, KeyEvent.VK_RIGHT, 0);
+            p.padInput("a");                                        // the pad toggles at the frame just selected
+            waitFor(() -> p.view().inputs().mask(0, 1) == dev.superjavendo.input.Joypad.A);
+        } finally { p.shutdown(); }
+    }
+
     @Test void closingAnUnchangedRunDoesNotAsk() throws Exception {
         boolean[] closed = {false};
         RecPanel p = panel(() -> closed[0] = true);
