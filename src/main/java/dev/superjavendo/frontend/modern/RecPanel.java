@@ -45,7 +45,7 @@ final class RecPanel extends JPanel {
     private int savedFrontier;
     private String toast = "";
     private long toastUntil;
-    private int prevPending;
+    private int prevPending, lastFrontier;
 
     final RecTimelineBar timeline;
     final RecPianoRoll roll;
@@ -152,6 +152,10 @@ final class RecPanel extends JPanel {
         RecSession.View v = st.view();
         if (v.pending() > 0 && prevPending == 0) bannerHidden = false;
         prevPending = v.pending();
+        if (v.frontier() != lastFrontier) {                    // the cursor stays on the frame to be played next
+            if (roll.cursorFrame() == lastFrontier) roll.setCursorFrame(v.frontier());
+            lastFrontier = v.frontier();
+        }
         roll.follow(v.playhead());
         step.refresh(v.pending() == 0, st.playing(), st.speed(), st.busy());
         if (st.error() != null) flash(st.error());
@@ -274,6 +278,7 @@ final class RecPanel extends JPanel {
         key(KeyEvent.VK_R, 0, this::reemulate);
         key(KeyEvent.VK_K, Shell.shortcutMask(), this::cutHere);
         key(KeyEvent.VK_M, 0, this::toggleMarker);
+        key(KeyEvent.VK_P, 0, () -> pad(1 - pad));
         key(KeyEvent.VK_Z, Shell.shortcutMask(), this::undo);
         key(KeyEvent.VK_Y, Shell.shortcutMask(), this::redo);
         key(KeyEvent.VK_Z, Shell.shortcutMask() | java.awt.event.InputEvent.SHIFT_DOWN_MASK, this::redo);
@@ -308,24 +313,20 @@ final class RecPanel extends JPanel {
         t.start();
     }
 
+    /** The pad's buttons, as the profile maps them, are the SNES buttons: pressing one toggles it at the cursor frame. */
+    private static final java.util.List<String> PAD_ROWS = java.util.List.of("b", "y", "a", "x", "l", "r", "up", "down", "left", "right", "start", "select");
+
     private void padPress(String b) {
         Window w = SwingUtilities.getWindowAncestor(this);
         if (w == null || !w.isActive()) return;
-        switch (b) {
-            case "left" -> roll.moveCursor(-1, 0, false);
-            case "right" -> roll.moveCursor(1, 0, false);
-            case "up" -> roll.moveCursor(0, -1, false);
-            case "down" -> roll.moveCursor(0, 1, false);
-            case "a" -> roll.toggleCursor();
-            case "b" -> escape();
-            case "x" -> reemulate();
-            case "y" -> cutHere();
-            case "l" -> back();
-            case "r" -> advance();
-            case "start" -> togglePlay();
-            case "select" -> pad(1 - pad);
-            default -> { }
-        }
+        padInput(b);
+    }
+
+    /** Toggles the SNES button named {@code b} ("a", "up", ...) at the cursor frame of the selected pad. */
+    void padInput(String b) {
+        int row = PAD_ROWS.indexOf(b);
+        if (row < 0 || disabled()) return;
+        toggle(pad, roll.cursorFrame(), row);
     }
 
     // ------------------------------------------------------------------ screenshots
@@ -471,8 +472,8 @@ final class RecPanel extends JPanel {
             g2.fillRect(0, 0, getWidth(), getHeight());
             g2.setColor(Pal.SEP);
             g2.drawLine(0, 0, getWidth(), 0);
-            String[][] hints = {{"A", "rec.h.toggle"}, {"B", "rec.h.back"}, {"LB", "rec.h.minus"}, {"RB", "rec.h.plus"},
-                    {"X", "rec.h.reemu"}, {"Y", "rec.h.cut"}, {"Start", "rec.h.play"}, {"Select", "rec.h.pad"}};
+            String[][] hints = {{"Pad", "rec.h.toggle"}, {"Esc", "rec.h.back"}, {",", "rec.h.minus"}, {".", "rec.h.plus"},
+                    {"R", "rec.h.reemu"}, {"Ctrl+K", "rec.h.cut"}, {"Space", "rec.h.play"}, {"P", "rec.h.pad"}};
             Font kf = Pal.ui(11, 2), lf = Pal.ui(12, 0);
             FontMetrics km = g2.getFontMetrics(kf);
             int x = 20;

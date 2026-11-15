@@ -74,6 +74,27 @@ class RecPanelTest {
         } finally { p.shutdown(); }
     }
 
+    @Test void padButtonsToggleTheSameSnesButtonAtTheCursorFrame() throws Exception {
+        RecPanel p = panel(() -> { });
+        try {
+            p.padInput("b");
+            p.padInput("right");
+            waitFor(() -> p.view().inputs().mask(0, 0) != 0);
+            int m = p.view().inputs().mask(0, 0);
+            assertEquals(dev.superjavendo.input.Joypad.B | dev.superjavendo.input.Joypad.RIGHT, m);
+            p.padInput("b");                                        // pressing again releases it
+            waitFor(() -> p.view().inputs().mask(0, 0) == dev.superjavendo.input.Joypad.RIGHT);
+            press(p, KeyEvent.VK_P, 0);                             // the other pad
+            p.padInput("a");
+            waitFor(() -> p.view().inputs().mask(1, 0) == dev.superjavendo.input.Joypad.A);
+            press(p, KeyEvent.VK_PERIOD, 0);                        // advancing moves the cursor to the next frame to play
+            waitFor(() -> p.view().frontier() == 1);
+            waitFor(() -> p.roll.cursorFrame() == 1);
+            p.padInput("x");
+            waitFor(() -> p.view().inputs().mask(1, 1) == dev.superjavendo.input.Joypad.X);
+        } finally { p.shutdown(); }
+    }
+
     @Test void closingAnUnchangedRunDoesNotAsk() throws Exception {
         boolean[] closed = {false};
         RecPanel p = panel(() -> closed[0] = true);

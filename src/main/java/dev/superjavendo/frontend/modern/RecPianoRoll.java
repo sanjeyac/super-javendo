@@ -55,6 +55,8 @@ final class RecPianoRoll extends JComponent {
     int visibleFrames() { return Math.max(1, (getWidth() - 2 * SIDE - LABEL_W) / STEP_X); }
     int cursorFrame() { return curFrame; }
     int cursorRow() { return curRow; }
+
+    void setCursorFrame(int frame) { curFrame = Math.max(0, frame); repaint(); }
     int selectionFrom() { return selFrom; }
     int selectionTo() { return selTo; }
 
