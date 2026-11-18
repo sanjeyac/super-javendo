@@ -22,6 +22,9 @@ public interface GameSupport {
     /** Records parsed from the contents of the battery save, or null if the data is not a save of this game. */
     default Records readRecords(byte[] sram) { return null; }
 
+    /** For a game that keeps its high scores in RAM and does not save them: where they are and how to read them. See {@link ScoreMonitor}. */
+    default Optional<RamScores> liveScores() { return Optional.empty(); }
+
     /** The battery save the launcher uses for this ROM: next to it, same name, {@code .srm}. */
     static Path srmOf(Path rom) {
         return rom.resolveSibling(rom.getFileName().toString().replaceFirst("\\.[^.]*$", "") + ".srm");

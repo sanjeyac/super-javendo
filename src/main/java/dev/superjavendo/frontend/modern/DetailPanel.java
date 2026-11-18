@@ -27,6 +27,7 @@ final class DetailPanel extends JComponent implements Scrollable {
     private Covers.Slot[] slots;
     private Records records;                // game-specific records from the battery save; null = none / not a known game
     private GameSupport known;
+    private java.util.function.Function<String, Records> storedRecords = crc -> null;   // scores the game keeps only in RAM
     private boolean recordsLoaded;
 
     private Runnable onPlay = () -> { }, onStar = () -> { }, onAssignCover = () -> { };
@@ -83,6 +84,8 @@ final class DetailPanel extends JComponent implements Scrollable {
         if (g != null) covers.loadSlots(g.path(), s -> SwingUtilities.invokeLater(() -> { if (game == g) { slots = s; repaint(); } }));
     }
 
+    void storedRecords(java.util.function.Function<String, Records> f) { storedRecords = f; }
+
     /** Re-reads the records from the game's save file (after a play session the save has changed). */
     void reloadRecords() {
         records = null;
@@ -97,7 +100,9 @@ final class DetailPanel extends JComponent implements Scrollable {
         if (recordsLoaded || game == null || game.crc32() == null) return;
         recordsLoaded = true;
         known = Games.byCrc(game.crc32()).filter(GameSupport::hasRecords).orElse(null);
-        records = known == null ? null : known.records(game.path()).filter(r -> !r.isEmpty()).orElse(null);
+        if (known == null) records = null;
+        else if (known.liveScores().isPresent()) records = storedRecords.apply(game.crc32());    // kept by us: the game does not save them
+        else records = known.records(game.path()).filter(r -> !r.isEmpty()).orElse(null);
     }
 
     @Override public Dimension getPreferredSize() { return new Dimension(340, contentH); }

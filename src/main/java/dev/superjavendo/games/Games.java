@@ -19,6 +19,7 @@ public final class Games {
 
     static {
         register(FZero.CRCS, FZero::new);
+        register(BruceLee.CRCS, BruceLee::new);
     }
 
     private static void register(Set<String> crcs, Supplier<? extends GameSupport> factory) {

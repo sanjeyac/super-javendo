@@ -63,6 +63,7 @@ public final class EmuWindow extends JFrame {
     private final AudioOut audio = new AudioOut();
     private final ControllerPorts ports = new ControllerPorts();
     private volatile boolean running = true, paused;
+    private final dev.superjavendo.games.ScoreMonitor scores;     // null unless the game keeps its scores in RAM
 
     public EmuWindow(Snes snes, Path sramFile, java.util.function.IntFunction<Path> stateFiles,
                      java.util.Map<Integer, String> profileOverrides, boolean exitOnClose) {
@@ -75,6 +76,11 @@ public final class EmuWindow extends JFrame {
         filter = Filter.valueOf(settings.filter.toUpperCase());
         audio.setVolume(settings.volume);
         snes.bus.apu.setSink(audio);
+        // Games that keep their best scores in RAM: a low-priority thread stores them (see games.ScoreMonitor)
+        String crcHex = String.format("%08X", Movie.crcOf(snes));
+        scores = dev.superjavendo.games.Games.byCrc(crcHex).flatMap(dev.superjavendo.games.GameSupport::liveScores)
+                .map(spec -> new dev.superjavendo.games.ScoreMonitor(crcHex, spec,
+                        new dev.superjavendo.games.ScoreStore(AppPaths.forCurrentUser()), 1000)).orElse(null);
         // Profiles and player assignments live in ~/.config/superjavendo (joystick/*.cfg, controllers.cfg).
         ControllerConfig.configure(ports, new ControllerFactory(), AppPaths.forCurrentUser(), profileOverrides);
 
@@ -199,6 +205,7 @@ public final class EmuWindow extends JFrame {
             } catch (java.io.IOException ex) { System.err.println("Movie not saved: " + ex.getMessage()); }
         }
         restoreSram();
+        if (scores != null) { if (playing == null) scores.sample(snes); scores.close(); }
         ports.close();
         snes.cart.saveSram(sramFile);
         audio.close();
@@ -232,6 +239,7 @@ public final class EmuWindow extends JFrame {
             stepInput();
             snes.runFrame();
             afterFrame();
+            if (scores != null && playing == null && snes.frameCount % 15 == 0) scores.sample(snes);
             present();
             audio.flush();
             SwingUtilities.invokeLater(this::repaint);

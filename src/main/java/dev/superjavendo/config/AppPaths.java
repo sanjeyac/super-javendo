@@ -115,6 +115,9 @@ public final class AppPaths {
     /** Input movies (speedrun recordings), one file per run. */
     public Path moviesDir() { return configDir.resolve("movies"); }
 
+    /** Best scores of the games that keep them only in RAM ({@code <CRC32>.tsv}, see {@code games.ScoreStore}). */
+    public Path scoresDir() { return configDir.resolve("scores"); }
+
     public Path statesDir() { return configDir.resolve("states"); }
 
     /** Save-state file of a ROM: <code>states/&lt;rom name without extension&gt;.state</code>. */
