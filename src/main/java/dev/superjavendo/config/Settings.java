@@ -23,6 +23,10 @@ public final class Settings {
     /** Start games in full screen (F11 toggles it in game, Esc leaves it). */
     public boolean fullscreen = false;
 
+    /** "Enhanced Mode 7": the Mode 7 layer redrawn at this many times the resolution (0 = off, the exact console picture). */
+    public int enhancedMode7 = 0;
+    public static final List<Integer> ENHANCED_MODE7 = List.of(0, 2, 4);
+
     /** Memory the Rec editor may use for its snapshots (greenzone), in MB. */
     public int recGreenzoneMb = 512;
     public static final List<Integer> REC_MEMORY_MB = List.of(128, 256, 512, 1024, 2048);
@@ -48,6 +52,7 @@ public final class Settings {
                     case "video.filter" -> { if (FILTERS.contains(v)) s.filter = v; }
                     case "video.scale" -> s.scale = clamp(v, MIN_SCALE, MAX_SCALE, s.scale);
                     case "video.fullscreen" -> s.fullscreen = v.equalsIgnoreCase("true") || v.equals("1");
+                    case "video.enhancedMode7" -> { int n = clamp(v, 0, 4, 0); s.enhancedMode7 = ENHANCED_MODE7.contains(n) ? n : 0; }
                     case "rec.greenzoneMb" -> s.recGreenzoneMb = clamp(v, 64, 8192, s.recGreenzoneMb);
                     case "rec.policy" -> { if (v.equals("keep") || v.equals("cut")) s.recPolicy = v; }
                     case "audio.volume" -> s.volume = clamp(v, 0, 100, s.volume);
@@ -74,6 +79,7 @@ public final class Settings {
         mine.put("video.filter", "video.filter=" + filter + "     # nearest | sharp | smooth");
         mine.put("video.scale", "video.scale=" + scale);
         mine.put("video.fullscreen", "video.fullscreen=" + fullscreen + "     # start games in full screen");
+        mine.put("video.enhancedMode7", "video.enhancedMode7=" + enhancedMode7 + "     # 0 = off | 2 | 4: Mode 7 (F-Zero, Mario Kart...) redrawn at higher resolution");
         mine.put("audio.volume", "audio.volume=" + volume);
         mine.put("rec.greenzoneMb", "rec.greenzoneMb=" + recGreenzoneMb + "     # memory of the Rec editor's snapshots");
         mine.put("rec.policy", "rec.policy=" + recPolicy + "     # keep | cut: what an edit in the past does to later inputs");

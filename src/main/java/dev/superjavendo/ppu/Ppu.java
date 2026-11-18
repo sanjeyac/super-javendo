@@ -28,6 +28,21 @@ public final class Ppu implements Stateful {
     private int[] outBuf = frame;
     private int outW = WIDTH, outH = HEIGHT;
 
+    private Mode7Enhancer enhancer;                 // null = off (the default): nothing below runs
+    private int[] enhancedOut;
+
+    /** Turns "Enhanced Mode 7" on at 2x or 4x ({@code scale} 2..4) or off (anything below 2). Output only: emulation is not affected. */
+    public void setEnhancedMode7(int scale) {
+        int s = scale < 2 ? 0 : Math.min(scale, 4);
+        if (s == 0) { enhancer = null; enhancedOut = null; }
+        else if (enhancer == null || enhancer.scale != s) enhancer = new Mode7Enhancer(s);
+    }
+
+    /** The last completed frame with its Mode 7 layer redrawn at higher resolution, or null (off, or no Mode 7 in that frame). */
+    public int[] enhancedPixels() { return enhancedOut; }
+    public int enhancedWidth() { return enhancer == null ? WIDTH : enhancer.outW; }
+    public int enhancedHeight() { return enhancer == null ? HEIGHT : enhancer.outH; }
+
     /** Pixels of the last completed frame: {@link #frame} (256x224) or the 512-wide buffer. Valid after VBlank starts. */
     public int[] outputPixels() { return outBuf; }
     public int outputWidth() { return outW; }
@@ -132,10 +147,12 @@ public final class Ppu implements Stateful {
         if ((inidisp & 0x80) == 0) oamAddr = oamAddrReg << 1;
         if (hiActive) { outBuf = hiFrame; outW = HI_WIDTH; outH = frameInterlace ? HI_HEIGHT : HEIGHT; }
         else { outBuf = frame; outW = WIDTH; outH = HEIGHT; }
+        enhancedOut = enhancer == null || hiActive ? null : enhancer.finish(vram, cgram, frame);
     }
 
     public void frameStart() {
         rangeOver = timeOver = false;
+        if (enhancer != null) enhancer.beginFrame();
         hiActive = false; frameInterlace = false;
         field ^= 1;
     }
@@ -294,6 +311,8 @@ public final class Ppu implements Stateful {
             case 6: renderBgHires(0, s, 4); break;
             default: renderMode7(s); break;
         }
+        if (enhancer != null && mode == 7 && !hiLine && !interlace)
+            enhancer.line(s, m7a, m7b, m7c, m7d, m7x, m7y, m7hofs, m7vofs, m7sel, (cgwsel & 1) != 0, inidisp & 0xF);
         if (((tm | ts) & 0x10) != 0) renderObjects(s);
         computeWindows();
 
@@ -361,6 +380,8 @@ public final class Ppu implements Stateful {
                 c = blend(c, sc, subtract, half);
             }
             frame[base + x] = toRgb(c, bright);
+            if (enhancer != null && mode == 7)
+                enhancer.plain(s, x, lay == 0 && mainCol[x] != 0 && !region((cgwsel >> 6) & 3, inCw) && !(enabled && !region((cgwsel >> 4) & 3, inCw)));
         }
         if (interlace || hiActive) { activateHi(s); copyLoToHi(s); }
     }
@@ -393,7 +414,7 @@ public final class Ppu implements Stateful {
         return r;
     }
 
-    private static int toRgb(int c, int bright) {
+    static int toRgb(int c, int bright) {
         int r = c & 31, g = (c >> 5) & 31, b = (c >> 10) & 31;
         r = (r << 3) | (r >> 2); g = (g << 3) | (g >> 2); b = (b << 3) | (b >> 2);
         if (bright != 15) { r = r * bright / 15; g = g * bright / 15; b = b * bright / 15; }
@@ -723,5 +744,6 @@ public final class Ppu implements Stateful {
         rangeOver = in.b(); timeOver = in.b();
         in.ints(frame);
         hiActive = false; frameInterlace = false; outBuf = frame; outW = WIDTH; outH = HEIGHT;
+        enhancedOut = null;
     }
 }

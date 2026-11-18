@@ -63,6 +63,7 @@ public final class EmuWindow extends JFrame {
     private final AudioOut audio = new AudioOut();
     private final ControllerPorts ports = new ControllerPorts();
     private volatile boolean running = true, paused;
+    private int enhancedMode7;
     private final dev.superjavendo.games.ScoreMonitor scores;     // null unless the game keeps its scores in RAM
 
     public EmuWindow(Snes snes, Path sramFile, java.util.function.IntFunction<Path> stateFiles,
@@ -76,6 +77,8 @@ public final class EmuWindow extends JFrame {
         filter = Filter.valueOf(settings.filter.toUpperCase());
         audio.setVolume(settings.volume);
         snes.bus.apu.setSink(audio);
+        enhancedMode7 = settings.enhancedMode7;
+        snes.bus.ppu.setEnhancedMode7(enhancedMode7);
         // Games that keep their best scores in RAM: a low-priority thread stores them (see games.ScoreMonitor)
         String crcHex = String.format("%08X", Movie.crcOf(snes));
         scores = dev.superjavendo.games.Games.byCrc(crcHex).flatMap(dev.superjavendo.games.GameSupport::liveScores)
@@ -222,7 +225,7 @@ public final class EmuWindow extends JFrame {
                 else {
                 if (recording != null) pendingReset = true;
                 Snes fresh = new Snes(snes.cart);
-                fresh.bus.apu.setSink(audio);
+                fresh.bus.apu.setSink(audio); fresh.bus.ppu.setEnhancedMode7(enhancedMode7);
                 snes = fresh;
                 show(I18n.t("game.reset"));
                 }
@@ -267,13 +270,15 @@ public final class EmuWindow extends JFrame {
     /** Copies the last completed frame of the console into the image the panel draws. */
     private void present() {
         var ppu = snes.bus.ppu;
-        int w = ppu.outputWidth(), h = ppu.outputHeight();
+        int[] pixels = ppu.enhancedPixels();                  // "Enhanced Mode 7": a bigger picture, when the frame has Mode 7 in it
+        int w = pixels != null ? ppu.enhancedWidth() : ppu.outputWidth(), h = pixels != null ? ppu.enhancedHeight() : ppu.outputHeight();
+        if (pixels == null) pixels = ppu.outputPixels();
         BufferedImage img = image;
         if (img.getWidth() != w || img.getHeight() != h) {
             img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
-            System.arraycopy(ppu.outputPixels(), 0, ((DataBufferInt) img.getRaster().getDataBuffer()).getData(), 0, w * h);
+            System.arraycopy(pixels, 0, ((DataBufferInt) img.getRaster().getDataBuffer()).getData(), 0, w * h);
             image = img;
-        } else System.arraycopy(ppu.outputPixels(), 0, ((DataBufferInt) img.getRaster().getDataBuffer()).getData(), 0, w * h);
+        } else System.arraycopy(pixels, 0, ((DataBufferInt) img.getRaster().getDataBuffer()).getData(), 0, w * h);
     }
 
     // ------------------------------------------------------------------ input movies (all on the emulation thread)
@@ -290,7 +295,7 @@ public final class EmuWindow extends JFrame {
         sramBackup = snes.cart.sram.clone();
         java.util.Arrays.fill(snes.cart.sram, (byte) 0);
         Snes fresh = new Snes(snes.cart);
-        fresh.bus.apu.setSink(audio);
+        fresh.bus.apu.setSink(audio); fresh.bus.ppu.setEnhancedMode7(enhancedMode7);
         snes = fresh;
         pendingReset = false;
     }
@@ -303,7 +308,7 @@ public final class EmuWindow extends JFrame {
     private void endMovieMode() {
         restoreSram();
         Snes fresh = new Snes(snes.cart);
-        fresh.bus.apu.setSink(audio);
+        fresh.bus.apu.setSink(audio); fresh.bus.ppu.setEnhancedMode7(enhancedMode7);
         snes = fresh;
     }
 
@@ -364,7 +369,7 @@ public final class EmuWindow extends JFrame {
     private void stepInput() {
         if (playing != null && playPos < playing.length()) {
             int a = playing.pad1(playPos), b = playing.pad2(playPos);
-            if ((a & Movie.RESET) != 0) { Snes fresh = new Snes(snes.cart); fresh.bus.apu.setSink(audio); snes = fresh; }
+            if ((a & Movie.RESET) != 0) { Snes fresh = new Snes(snes.cart); fresh.bus.apu.setSink(audio); fresh.bus.ppu.setEnhancedMode7(enhancedMode7); snes = fresh; }
             snes.joypad.setButtons(0, a);
             snes.joypad.setButtons(1, b);
             playPos++;
